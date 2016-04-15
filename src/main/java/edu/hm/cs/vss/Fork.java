@@ -1,7 +1,7 @@
 package edu.hm.cs.vss;
 
-import java.io.Serializable;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -27,22 +27,21 @@ public interface Fork {
     void unblock();
 
     class Builder {
-        private static int count = 1;
-        private String chairName;
+        private Chair chair;
 
-        public Builder withChair(final String chairName) {
-            this.chairName = chairName;
+        public Builder withChair(final Chair chair) {
+            this.chair = chair;
             return this;
         }
 
         public Fork create() {
             return new Fork() {
-                private final String name = "Fork-" + (count++);
+                private final String name = "Fork-" + UUID.randomUUID().toString();
                 private final AtomicBoolean block = new AtomicBoolean(false);
 
                 @Override
                 public String toString() {
-                    return name + " from " + chairName;
+                    return name + " from " + chair.toString();
                 }
 
                 @Override

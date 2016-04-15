@@ -1,6 +1,6 @@
 package edu.hm.cs.vss;
 
-import edu.hm.cs.vss.impl.TableMasterMealObserver;
+import edu.hm.cs.vss.local.LocalTableMaster;
 import edu.hm.cs.vss.log.FileLogger;
 import edu.hm.cs.vss.log.Logger;
 import edu.hm.cs.vss.log.merger.LogMerger;
@@ -45,7 +45,7 @@ public class Main {
 
         final Table table = new Table.Builder()
                 .withChairCount(chairCount)
-                .withTableMaster(new TableMasterMealObserver())
+                .withTableMaster(new LocalTableMaster())
                 .create();
 
         final ExecutorService executorService = Executors.newCachedThreadPool(r -> {
@@ -60,7 +60,7 @@ public class Main {
                         .setTable(table)
                         .setVeryHungry(veryHungry && index == 1)
                         .create())
-                .peek(executorService::execute)
+                .peek(Thread::start)
                 .collect(Collectors.toList());
 
         try {

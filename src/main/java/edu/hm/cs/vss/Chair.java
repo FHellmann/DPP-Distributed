@@ -1,6 +1,7 @@
 package edu.hm.cs.vss;
 
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -38,12 +39,10 @@ public interface Chair {
     int getQueueSize();
 
     class Builder {
-        private static int count = 1;
-
         public Chair create() {
             return new Chair() {
-                private final String name = "Chair-" + (count++);
-                private final Fork fork = new Fork.Builder().withChair(name).create();
+                private final String name = "Chair-" + UUID.randomUUID().toString();
+                private final Fork fork = new Fork.Builder().withChair(this).create();
                 private final AtomicBoolean block = new AtomicBoolean(false);
                 private final Semaphore semaphore = new Semaphore(1, true);
 

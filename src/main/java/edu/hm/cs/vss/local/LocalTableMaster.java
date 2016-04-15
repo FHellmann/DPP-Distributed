@@ -1,4 +1,4 @@
-package edu.hm.cs.vss.impl;
+package edu.hm.cs.vss.local;
 
 import edu.hm.cs.vss.Philosopher;
 import edu.hm.cs.vss.TableMaster;
@@ -8,9 +8,9 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Created by Fabio on 22.03.2016.
+ * Created by Fabio Hellmann on 14.04.2016.
  */
-public class TableMasterMealObserver implements TableMaster, Philosopher.OnStandUpListener {
+public class LocalTableMaster implements TableMaster, Philosopher.OnStandUpListener {
     private final List<Philosopher> philosopherList = Collections.synchronizedList(new ArrayList<>());
     private volatile int maxMealCount;
 

@@ -1,4 +1,4 @@
-package edu.hm.cs.vss.impl;
+package edu.hm.cs.vss.local;
 
 import edu.hm.cs.vss.Chair;
 import edu.hm.cs.vss.Fork;
@@ -15,49 +15,41 @@ import java.util.stream.Stream;
 /**
  * Created by Fabio Hellmann on 17.03.2016.
  */
-public class PhilosopherImpl implements Philosopher {
-    private final String name;
+public class LocalPhilosopher extends Philosopher {
     private Logger logger;
     private final Table table;
     private final long timeSleep;
     private final long timeEat;
     private final long timeMediate;
-    private Chair chair;
     private List<Fork> forks = new ArrayList<>();
     private int eatIterations;
     private int mealCount;
     private long bannedTime = -1;
     private OnStandUpListener onStandUpListener;
 
-    public PhilosopherImpl(final String name,
-                           final Logger logger,
-                           final Table table,
-                           final long timeSleep,
-                           final long timeEat,
-                           final long timeMediate,
-                           final boolean veryHungry) {
+    public LocalPhilosopher(final String name,
+                            final Logger logger,
+                            final Table table,
+                            final long timeSleep,
+                            final long timeEat,
+                            final long timeMediate,
+                            final boolean veryHungry) {
         this(name, logger, table, timeSleep, timeEat, veryHungry ? timeMediate / 2 : timeMediate, veryHungry ? DEFAULT_EAT_ITERATIONS * 2 : DEFAULT_EAT_ITERATIONS);
     }
 
-    private PhilosopherImpl(final String name,
-                           final Logger logger,
-                           final Table table,
-                           final long timeSleep,
-                           final long timeEat,
-                           final long timeMediate,
-                           final int eatIterations) {
-        this.name = name;
+    private LocalPhilosopher(final String name,
+                             final Logger logger,
+                             final Table table,
+                             final long timeSleep,
+                             final long timeEat,
+                             final long timeMediate,
+                             final int eatIterations) {
         this.logger = logger;
         this.table = table;
         this.timeSleep = timeSleep;
         this.timeEat = timeEat;
         this.timeMediate = timeMediate;
         this.eatIterations = eatIterations;
-    }
-
-    @Override
-    public String getName() {
-        return name;
     }
 
     @Override
@@ -119,31 +111,14 @@ public class PhilosopherImpl implements Philosopher {
     }
 
     @Override
-    public Chair waitForSitDown() {
-        this.chair = Philosopher.super.waitForSitDown();
-        return chair;
-    }
-
-    @Override
-    public void standUp() {
-        Philosopher.super.standUp();
-        chair = null;
-    }
-
-    @Override
-    public Optional<Chair> getChair() {
-        return Optional.ofNullable(chair);
-    }
-
-    @Override
     public Stream<Fork> waitForForks(Chair chair) {
-        this.forks = Philosopher.super.waitForForks(chair).collect(Collectors.toList());
+        this.forks = super.waitForForks(chair).collect(Collectors.toList());
         return forks.stream();
     }
 
     @Override
     public void releaseForks() {
-        Philosopher.super.releaseForks();
+        super.releaseForks();
         forks.clear();
     }
 

@@ -1,6 +1,6 @@
 package edu.hm.cs.vss;
 
-import edu.hm.cs.vss.impl.PhilosopherImpl;
+import edu.hm.cs.vss.local.LocalPhilosopher;
 import edu.hm.cs.vss.log.EmptyLogger;
 import edu.hm.cs.vss.log.FileLogger;
 import edu.hm.cs.vss.log.Logger;
@@ -17,105 +17,96 @@ import java.util.stream.Stream;
 /**
  * Created by Fabio Hellmann on 17.03.2016.
  */
-public interface Philosopher extends Runnable, Serializable {
-    int DEFAULT_EAT_ITERATIONS = 3;
-    long DEFAULT_TIME_TO_SLEEP = TimeUnit.MILLISECONDS.convert(10, TimeUnit.MILLISECONDS);
-    long DEFAULT_TIME_TO_MEDIATE = TimeUnit.MILLISECONDS.convert(5, TimeUnit.MILLISECONDS);
-    long DEFAULT_TIME_TO_EAT = TimeUnit.MILLISECONDS.convert(1, TimeUnit.MILLISECONDS);
-    long DEFAULT_TIME_TO_BANN = TimeUnit.MILLISECONDS.convert(5, TimeUnit.MILLISECONDS);
-    int MAX_DEADLOCK_COUNT = 10;
-    DeadlockFunction DEADLOCK_FUNCTION = (philosopher, forks) -> {
+public abstract class Philosopher extends Thread {
+    public static final int DEFAULT_EAT_ITERATIONS = 3;
+    public static final long DEFAULT_TIME_TO_SLEEP = TimeUnit.MILLISECONDS.convert(10, TimeUnit.MILLISECONDS);
+    public static final long DEFAULT_TIME_TO_MEDIATE = TimeUnit.MILLISECONDS.convert(5, TimeUnit.MILLISECONDS);
+    public static final long DEFAULT_TIME_TO_EAT = TimeUnit.MILLISECONDS.convert(1, TimeUnit.MILLISECONDS);
+    public static final long DEFAULT_TIME_TO_BANN = TimeUnit.MILLISECONDS.convert(5, TimeUnit.MILLISECONDS);
+    private static final int MAX_DEADLOCK_COUNT = 10;
+    private static final DeadlockFunction DEADLOCK_FUNCTION = (philosopher, forks) -> {
         forks.parallelStream().forEach(Fork::unblock);
         forks.clear();
     };
-
-    /**
-     * Get the name of the philosopher.
-     *
-     * @return the name.
-     */
-    String getName();
 
     /**
      * Get the logger of the philosopher.
      *
      * @return the logger.
      */
-    Logger getLogger();
+    public abstract Logger getLogger();
 
     /**
      * Get the table where the philosopher can get something to eat.
      *
      * @return the table.
      */
-    Table getTable();
+    public abstract Table getTable();
 
     /**
      * Get the amount of eaten meals.
      *
      * @return the amount of eaten meals.
      */
-    int getMealCount();
+    public abstract int getMealCount();
 
     /**
      * If a meal was eat increment the counter.
      */
-    void incrementMealCount();
+    public abstract void incrementMealCount();
 
     /**
      * Get the iteration count of how many times the philosopher want's to eat something. (Default is 3)
      *
      * @return the iteration count.
      */
-    int getEatIterationCount();
+    public abstract int getEatIterationCount();
 
     /**
      * Refuse the philosopher a seat at the table.
      */
-    void banned();
+    public abstract void banned();
 
     /**
      * Allow the philosopher to sit down at the table.
      */
-    void unbanned();
+    public abstract void unbanned();
 
     /**
      * Get the time the philosopher is no longer allowed to sit at the table.
      *
      * @return the time.
      */
-    Optional<Long> getBannedTime();
+    public abstract Optional<Long> getBannedTime();
 
     /**
      * Get the time to sleep. (in Milliseconds)
      *
      * @return the time to sleep.
      */
-    long getTimeToSleep();
+    public abstract long getTimeToSleep();
 
     /**
      * Get the time to eat. (in Milliseconds)
      *
      * @return the time to eat.
      */
-    long getTimeToEat();
+    public abstract long getTimeToEat();
 
     /**
      * Get the time to mediate. (in Milliseconds)
      *
      * @return the time to mediate.
      */
-    long getTimeToMediate();
+    public abstract long getTimeToMediate();
 
-    Optional<Chair> getChair();
+    public abstract Stream<Fork> getForks();
 
-    Stream<Fork> getForks();
+    public abstract void setOnStandUpListener(final OnStandUpListener listener);
 
-    void setOnStandUpListener(final OnStandUpListener listener);
+    public abstract Optional<OnStandUpListener> getOnStandUpListener();
 
-    Optional<OnStandUpListener> getOnStandUpListener();
-
-    default Chair waitForSitDown() {
+    public Chair waitForSitDown() {
         say("Waiting for a nice seat...");
 
         Optional<Chair> chairOptional = Optional.empty();
@@ -154,13 +145,13 @@ public interface Philosopher extends Runnable, Serializable {
     /**
      * Unblocks the seat and resets the philosophers seat.
      */
-    default void standUp() {
+    public void standUp(final Chair chair) {
         releaseForks();
-        say("Stand up from seat (" + getChair().get().toString() + ")");
-        getChair().ifPresent(Chair::unblock);
+        say("Stand up from seat (" + chair.toString() + ")");
+        chair.unblock();
     }
 
-    default Stream<Fork> waitForForks(final Chair chair) {
+    public Stream<Fork> waitForForks(final Chair chair) {
         say("Waiting for 2 forks...");
 
         List<Fork> foundForks = new ArrayList<>();
@@ -209,7 +200,7 @@ public interface Philosopher extends Runnable, Serializable {
     /**
      * Unblock all forks and reset the forks the philosopher holds.
      */
-    default void releaseForks() {
+    public void releaseForks() {
         final String forks = getForks().map(Object::toString).collect(Collectors.joining(", "));
         say("Release my forks" + ((forks.length() > 0) ? " (" + forks + ")" : " (no forks picked yet)"));
         getForks().forEach(Fork::unblock);
@@ -218,7 +209,7 @@ public interface Philosopher extends Runnable, Serializable {
     /**
      * The philosopher is eating.
      */
-    default void eat() throws InterruptedException {
+    private void eat() throws InterruptedException {
         incrementMealCount();
         getOnStandUpListener().ifPresent(listener -> listener.onStandUp(this));
         say("Eating for " + getTimeToEat() + " ms");
@@ -228,7 +219,7 @@ public interface Philosopher extends Runnable, Serializable {
     /**
      * The philosopher is mediating.
      */
-    default void mediate() throws InterruptedException {
+    private void mediate() throws InterruptedException {
         say("Mediating for " + getTimeToMediate() + " ms");
         onThreadSleep(getTimeToMediate());
     }
@@ -236,7 +227,7 @@ public interface Philosopher extends Runnable, Serializable {
     /**
      * The philosopher is sleeping.
      */
-    default void sleep() throws InterruptedException {
+    private void sleep() throws InterruptedException {
         say("Sleeping for " + getTimeToSleep() + " ms");
         onThreadSleep(getTimeToSleep());
     }
@@ -244,7 +235,8 @@ public interface Philosopher extends Runnable, Serializable {
     /**
      * What the philosopher do in his life...
      */
-    default void run() {
+    @Override
+    public void run() {
         say("I'm alive!");
 
         getTable().getTableMaster().register(this);
@@ -262,7 +254,7 @@ public interface Philosopher extends Runnable, Serializable {
                                 throw new RuntimeException(e);
                             }
                         }) // Eat the next portion
-                        .peek(tmp -> standUp()) // Stand up from chair and release forks
+                        .peek(this::standUp) // Stand up from chair and release forks
                         .forEach(tmp -> {
                             try {
                                 mediate();
@@ -281,25 +273,25 @@ public interface Philosopher extends Runnable, Serializable {
         getTable().getTableMaster().unregister(this);
     }
 
-    default void say(final String message) {
+    private void say(final String message) {
         getLogger().log("[" + getName() + "; Meals=" + getMealCount() + "]: " + message);
     }
 
-    default void onThreadSleep(final long time) throws InterruptedException {
+    private void onThreadSleep(final long time) throws InterruptedException {
         Thread.sleep(time);
     }
 
     @FunctionalInterface
-    interface OnStandUpListener {
+    public interface OnStandUpListener {
         void onStandUp(final Philosopher philosopher);
     }
 
     @FunctionalInterface
-    interface DeadlockFunction {
+    private interface DeadlockFunction {
         void onDeadlockDetected(final Philosopher philosopher, final List<Fork> forkStream);
     }
 
-    class Builder {
+    public static class Builder {
         private static int count = 1;
         private String namePrefix = "";
         private String name = "Philosopher-" + (count++);
@@ -356,7 +348,7 @@ public interface Philosopher extends Runnable, Serializable {
             if (table == null) {
                 throw new NullPointerException("Table can not be null. Use new Philosopher.Builder().setTable(Table).create()");
             }
-            return new PhilosopherImpl(namePrefix + name, logger, table, timeSleep, timeEat, timeMediate, veryHungry);
+            return new LocalPhilosopher(namePrefix + name, logger, table, timeSleep, timeEat, timeMediate, veryHungry);
         }
     }
 }
