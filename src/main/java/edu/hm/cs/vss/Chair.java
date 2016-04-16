@@ -40,7 +40,7 @@ public interface Chair extends Serializable {
      */
     int getQueueSize();
 
-    class Builder {
+    class Builder implements Serializable {
         private static int counter = 1;
         private String nameSuffix = Integer.toString(counter++);
 
@@ -52,7 +52,7 @@ public interface Chair extends Serializable {
         public Chair create() {
             return new Chair() {
                 private final String name = "Chair-" + nameSuffix;
-                private final Fork fork = new Fork.Builder().withChair(this).create();
+                private final Fork fork = new Fork.Builder().withChair(this).setNameUniqueId().create();
                 private final AtomicBoolean block = new AtomicBoolean(false);
                 private final Semaphore semaphore = new Semaphore(1, true);
 

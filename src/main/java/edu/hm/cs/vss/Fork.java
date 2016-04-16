@@ -27,7 +27,7 @@ public interface Fork extends Serializable {
      */
     void unblock();
 
-    class Builder {
+    class Builder implements Serializable {
         private static int counter = 1;
         private String nameSuffix = Integer.toString(counter++);
         private Chair chair;

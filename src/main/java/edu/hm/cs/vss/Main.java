@@ -46,13 +46,15 @@ public class Main {
         final Table table = new Table.Builder()
                 .withChairCount(chairCount)
                 .withTableMaster(new LocalTableMaster())
+                .setFileLogger()
                 .create();
 
         final List<Philosopher> philosopherList = IntStream.rangeClosed(1, philosopherCount)
                 .mapToObj(index -> new Philosopher.Builder()
-                        .setFileLogger()
                         .setTable(table)
+                        .setUniqueName()
                         .setVeryHungry(veryHungry && index == 1)
+                        .setFileLogger()
                         .create())
                 .peek(Thread::start)
                 .collect(Collectors.toList());
@@ -65,12 +67,76 @@ public class Main {
         String input;
         boolean quit = false;
         while (!quit) {
-            System.out.println("Waiting for user input (" + philosopherList.size() + " = Philosophers | " + table.getChairs().count() + " = Chairs)");
             System.out.print("> ");
             input = scanner.nextLine();
             switch (input) {
+                /*
+                case "?":
+                case "h":
+                case "H":
+                case "help":
+                case "Help": {
+                    System.out.println("? / h / H / help / Help \t\t Zeigt die Hilfe an.");
+                    System.out.println("s / S / status / Status \t\t Zeigt den Status an.");
+                } break;
+                */
+                case "s":
+                case "S":
+                case "status":
+                case "Status": {
+                    System.out.println("######################## STATUS ########################");
+                    System.out.println("Table(s):");
+                    table.getTables().peek(tmp -> System.out.println("\t- " + tmp.getName())).forEach(tmp -> tmp.getChairs().map(Object::toString).map(name -> "\t\t+ " + name).forEach(System.out::println));
+                    System.out.println("Local Philosopher(s):");
+                    philosopherList.stream().map(Thread::getName).map(name -> "\t- " + name).forEach(System.out::println);
+                    System.out.println("######################### ENDE #########################");
+                }
+                break;
+                case "t":
+                case "T":
+                case "table":
+                case "Table": {
+                    System.out.print("Enter host name: ");
+                    final String hostName = scanner.next();
+
+                    System.out.println("Try to connect to table " + hostName);
+                    table.addTable(hostName);
+                }
+                break;
+                case "c":
+                case "C":
+                case "chair":
+                case "Chair": {
+                    System.out.print("Enter the chair count to add/delete: ");
+                    int count = scanner.nextInt();
+
+                    if (count > 0) {
+                        System.out.println("Adding " + count + " Chair(s)...");
+
+                        IntStream.rangeClosed(0, count - 1)
+                                .mapToObj(index -> new Chair.Builder().setNameUniqueId().create())
+                                .forEach(table::addChair);
+
+                        System.out.println("Added " + count + " Chair(s)!");
+                    } else {
+                        count *= -1;
+                        if (count > table.getChairs().count()) {
+                            count = (int) (table.getChairs().count() - 1);
+                        }
+
+                        System.out.println("Removing " + count + " Chair(s)...");
+
+                        table.getChairs()
+                                .limit(count - 1)
+                                .collect(Collectors.toList())
+                                .stream().forEach(table::removeChair);
+
+                        System.out.println("Removed " + count + " Chair(s)!");
+                    }
+                }
+                break;
                 case "p":
-                case "P":
+                case "P": {
                     System.out.print("Add philosophers ('-' = delete): ");
                     int count = scanner.nextInt();
 
@@ -79,6 +145,7 @@ public class Main {
 
                         IntStream.rangeClosed(0, count - 1)
                                 .mapToObj(index -> new Philosopher.Builder()
+                                        .setUniqueName()
                                         .setFileLogger()
                                         .setTable(table)
                                         .create())
@@ -103,7 +170,8 @@ public class Main {
                             System.out.println("Killed all Philosophers!");
                         }
                     }
-                    break;
+                }
+                break;
                 case "p -":
                 case "P -":
                 case "p remove":
@@ -173,5 +241,9 @@ public class Main {
         // Merge all log files
         final File file = new File(".");
         LogMerger.merge(file);
+
+        System.out.println("Files merged!");
+
+        System.exit(1);
     }
 }

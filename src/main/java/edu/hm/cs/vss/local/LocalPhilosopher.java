@@ -44,6 +44,7 @@ public class LocalPhilosopher extends Philosopher {
                              final long timeEat,
                              final long timeMediate,
                              final int eatIterations) {
+        setName(name);
         this.logger = logger;
         this.table = table;
         this.timeSleep = timeSleep;

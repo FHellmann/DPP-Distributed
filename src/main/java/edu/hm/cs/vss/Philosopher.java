@@ -5,10 +5,10 @@ import edu.hm.cs.vss.log.EmptyLogger;
 import edu.hm.cs.vss.log.FileLogger;
 import edu.hm.cs.vss.log.Logger;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 /**
  * Created by Fabio Hellmann on 17.03.2016.
  */
-public abstract class Philosopher extends Thread implements Serializable {
+public abstract class Philosopher extends Thread {
     public static final int DEFAULT_EAT_ITERATIONS = 3;
     public static final long DEFAULT_TIME_TO_SLEEP = TimeUnit.MILLISECONDS.convert(10, TimeUnit.MILLISECONDS);
     public static final long DEFAULT_TIME_TO_MEDIATE = TimeUnit.MILLISECONDS.convert(5, TimeUnit.MILLISECONDS);
@@ -112,12 +112,24 @@ public abstract class Philosopher extends Thread implements Serializable {
         Optional<Chair> chairOptional = Optional.empty();
         do {
             // waiting for a seat... if one is available it is directly blocked (removed from table)
-            if(getTable().getTableMaster().isAllowedToTakeSeat(this)) {
-                final int minQueueSize = getTable().getChairs().parallel().mapToInt(Chair::getQueueSize).min().orElse(0);
-                chairOptional = getTable().getChairs()
+            if (getTable().getTables().map(Table::getTableMaster).allMatch(tableMaster -> tableMaster.isAllowedToTakeSeat(getMealCount()))) {
+                unbanned();
+
+                // Calculate minimal queue size to get a chair
+                final int minQueueSize = getTable().getTables()
+                        .flatMap(Table::getChairs)
+                        .parallel()
+                        .mapToInt(Chair::getQueueSize)
+                        .min()
+                        .orElse(0);
+
+                // searching for the chair with a minimal queue size
+                chairOptional = getTable().getTables()
+                        .flatMap(Table::getChairs)
                         .filter(chair -> minQueueSize >= chair.getQueueSize())
                         .findFirst();
-                if(chairOptional.isPresent()) {
+
+                if (chairOptional.isPresent()) {
                     try {
                         chairOptional = chairOptional.get().blockIfAvailable();
                     } catch (InterruptedException e) {
@@ -125,6 +137,8 @@ public abstract class Philosopher extends Thread implements Serializable {
                     }
                 }
             } else {
+                banned();
+
                 getBannedTime().ifPresent(time -> {
                     say("I'm banned for " + time + " ms :'(");
                     try {
@@ -242,7 +256,7 @@ public abstract class Philosopher extends Thread implements Serializable {
         getTable().getTableMaster().register(this);
 
         try {
-            while (!Thread.currentThread().isInterrupted()) {
+            while (!isInterrupted()) {
                 // 3 Iterations by default... or more if the philosopher is very hungry
                 IntStream.rangeClosed(0, getEatIterationCount() - 1)
                         .mapToObj(index -> waitForSitDown()) // Sit down on a free chair -> waiting for a free
@@ -268,9 +282,9 @@ public abstract class Philosopher extends Thread implements Serializable {
             }
         } catch (Exception e) {
             // just for leaving the while loop
+        } finally {
+            getTable().getTableMaster().unregister(this);
         }
-
-        getTable().getTableMaster().unregister(this);
     }
 
     private void say(final String message) {
@@ -294,7 +308,8 @@ public abstract class Philosopher extends Thread implements Serializable {
     public static class Builder {
         private static int count = 1;
         private String namePrefix = "";
-        private String name = "Philosopher-" + (count++);
+        private String nameSuffix = Integer.toString(count++);
+        private String name = "Philosopher-";
         private Logger logger = new EmptyLogger();
         private Table table;
         private long timeSleep = DEFAULT_TIME_TO_SLEEP;
@@ -307,13 +322,18 @@ public abstract class Philosopher extends Thread implements Serializable {
             return this;
         }
 
+        public Builder setUniqueName() {
+            this.nameSuffix = UUID.randomUUID().toString();
+            return this;
+        }
+
         public Builder setTable(final Table table) {
             this.table = table;
             return this;
         }
 
         public Builder setFileLogger() {
-            return setLogger(new FileLogger(name));
+            return setLogger(new FileLogger(name + nameSuffix));
         }
 
         public Builder setLogger(final Logger logger) {
@@ -348,7 +368,7 @@ public abstract class Philosopher extends Thread implements Serializable {
             if (table == null) {
                 throw new NullPointerException("Table can not be null. Use new Philosopher.Builder().setTable(Table).create()");
             }
-            return new LocalPhilosopher(namePrefix + name, logger, table, timeSleep, timeEat, timeMediate, veryHungry);
+            return new LocalPhilosopher(namePrefix + name + nameSuffix, logger, table, timeSleep, timeEat, timeMediate, veryHungry);
         }
     }
 }

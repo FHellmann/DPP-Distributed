@@ -29,8 +29,8 @@ public interface TableMaster extends Serializable {
     /**
      * Check whether the philosopher is allowed to take a seat or not.
      *
-     * @param philosopher to check.
+     * @param mealCount to check.
      * @return <code>true</code> if the philosopher is allowed to take a seat.
      */
-    boolean isAllowedToTakeSeat(final Philosopher philosopher);
+    boolean isAllowedToTakeSeat(final Integer mealCount);
 }

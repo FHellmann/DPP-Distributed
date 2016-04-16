@@ -18,5 +18,5 @@ public interface RmiTable extends Remote {
 
     int getChairCount() throws RemoteException;
 
-    TableMaster getTableMaster() throws RemoteException;
+    TableMaster getMaster() throws RemoteException;
 }

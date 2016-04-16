@@ -1,6 +1,7 @@
 package edu.hm.cs.vss.local;
 
 import edu.hm.cs.vss.Philosopher;
+import edu.hm.cs.vss.Table;
 import edu.hm.cs.vss.TableMaster;
 
 import java.util.ArrayList;
@@ -12,7 +13,7 @@ import java.util.List;
  */
 public class LocalTableMaster implements TableMaster, Philosopher.OnStandUpListener {
     private final List<Philosopher> philosopherList = Collections.synchronizedList(new ArrayList<>());
-    private volatile int maxMealCount;
+    private volatile int maxMealCount = MAX_DEVIATION;
 
     @Override
     public void register(Philosopher philosopher) {
@@ -27,14 +28,8 @@ public class LocalTableMaster implements TableMaster, Philosopher.OnStandUpListe
     }
 
     @Override
-    public boolean isAllowedToTakeSeat(Philosopher philosopher) {
-        final boolean isAllowedToTakeSeat = philosopher.getMealCount() <= maxMealCount;
-        if(isAllowedToTakeSeat) {
-            philosopher.unbanned();
-        } else {
-            philosopher.banned();
-        }
-        return isAllowedToTakeSeat;
+    public boolean isAllowedToTakeSeat(Integer mealCount) {
+        return mealCount <= maxMealCount;
     }
 
     @Override

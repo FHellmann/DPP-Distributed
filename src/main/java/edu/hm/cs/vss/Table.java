@@ -1,8 +1,13 @@
 package edu.hm.cs.vss;
 
-import edu.hm.cs.vss.local.LocalMergedTable;
+import edu.hm.cs.vss.local.LocalTable;
+import edu.hm.cs.vss.log.EmptyLogger;
+import edu.hm.cs.vss.log.FileLogger;
+import edu.hm.cs.vss.log.Logger;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -15,7 +20,12 @@ public interface Table {
     int STATIC_PORT = 32984;
 
     default String getName() {
-        return "127.0.0.1";
+        try {
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+            return "127.0.0.1"; // TODO This is a potential bug if the host can not be detected automaticly
+        }
     }
 
     /**
@@ -83,7 +93,8 @@ public interface Table {
 
     class Builder {
         private int amountChairs;
-        private TableMaster tableMaster;
+        private TableMaster tableMaster = philosopher -> true;
+        private Logger logger = new EmptyLogger();
 
         public Builder withChairCount(final int amountOfChairs) {
             amountChairs = amountOfChairs;
@@ -95,11 +106,16 @@ public interface Table {
             return this;
         }
 
+        public Builder setFileLogger() {
+            this.logger = new FileLogger("tables");
+            return this;
+        }
+
         public Table create() throws IOException {
-            final Table table = new LocalMergedTable();
+            final Table table = new LocalTable(logger);
             table.setTableMaster(tableMaster);
             IntStream.rangeClosed(1, amountChairs - 1)
-                    .mapToObj(index -> new Chair.Builder().create())
+                    .mapToObj(index -> new Chair.Builder().setNameUniqueId().create())
                     .forEach(table::addChair);
             return table;
         }
