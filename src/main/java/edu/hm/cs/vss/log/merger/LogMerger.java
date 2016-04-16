@@ -67,11 +67,14 @@ public final class LogMerger {
     }
 
     public static void main(String[] args) throws IOException {
+        final File file;
         if (args.length == 0) {
-            System.out.println("Directory of log files is needed");
-            return;
+            file = new File(".");
+            System.out.println("Default Directory: " + file.getAbsolutePath());
+        } else {
+            file = new File(args[0]);
         }
 
-        merge(new File(args[0]));
+        merge(file);
     }
 }

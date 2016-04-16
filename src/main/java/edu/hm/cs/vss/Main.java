@@ -8,8 +8,8 @@ import edu.hm.cs.vss.log.merger.LogMerger;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.Optional;
+import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -48,12 +48,6 @@ public class Main {
                 .withTableMaster(new LocalTableMaster())
                 .create();
 
-        final ExecutorService executorService = Executors.newCachedThreadPool(r -> {
-            final Thread thread = new Thread(r);
-            thread.setDaemon(true);
-            return thread;
-        });
-
         final List<Philosopher> philosopherList = IntStream.rangeClosed(1, philosopherCount)
                 .mapToObj(index -> new Philosopher.Builder()
                         .setFileLogger()
@@ -63,18 +57,102 @@ public class Main {
                 .peek(Thread::start)
                 .collect(Collectors.toList());
 
-        try {
-            Thread.sleep(runtime);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        // ##########################################################################################
+        // User Input
+        // ##########################################################################################
+
+        final Scanner scanner = new Scanner(System.in);
+        String input;
+        boolean quit = false;
+        while (!quit) {
+            System.out.println("Waiting for user input (" + philosopherList.size() + " = Philosophers | " + table.getChairs().count() + " = Chairs)");
+            System.out.print("> ");
+            input = scanner.nextLine();
+            switch (input) {
+                case "p":
+                case "P":
+                    System.out.print("Add philosophers ('-' = delete): ");
+                    int count = scanner.nextInt();
+
+                    if (count > 0) {
+                        System.out.println("Adding " + count + " Philosopher(s)...");
+
+                        IntStream.rangeClosed(0, count - 1)
+                                .mapToObj(index -> new Philosopher.Builder()
+                                        .setFileLogger()
+                                        .setTable(table)
+                                        .create())
+                                .peek(philosopherList::add)
+                                .forEach(Thread::start);
+
+                        System.out.println("Added " + count + " Philosopher(s)!");
+                    } else {
+                        count *= -1;
+
+                        System.out.println("Killing " + count + " Philosopher(s)...");
+                        if (count < philosopherList.size()) {
+                            IntStream.rangeClosed(0, count - 1)
+                                    .mapToObj(philosopherList::get)
+                                    .peek(Thread::interrupt)
+                                    .peek(philosopherList::remove)
+                                    .forEach(philosopher -> System.out.println("Killed Philosopher " + philosopher.getName() + "!"));
+                        } else {
+                            philosopherList.parallelStream()
+                                    .forEach(Thread::interrupt);
+                            philosopherList.clear();
+                            System.out.println("Killed all Philosophers!");
+                        }
+                    }
+                    break;
+                case "p -":
+                case "P -":
+                case "p remove":
+                case "P remove":
+                    System.out.println("Philosopher(s):");
+                    philosopherList.stream()
+                            .map(Thread::getName)
+                            .forEach(System.out::println);
+
+                    System.out.print("Enter name to kill ('' = all): ");
+                    String name = scanner.next();
+
+                    if (name.length() > 0) {
+                        System.out.println("Trying to kill " + name + "...");
+
+                        final Optional<Philosopher> any = philosopherList.stream()
+                                .filter(philosopher -> philosopher.getName().equals(name))
+                                .findAny();
+                        if (any.isPresent()) {
+                            final Philosopher philosopher = any.get();
+                            philosopher.interrupt();
+                            philosopherList.remove(philosopher);
+                            System.out.println("Killed Philosopher " + philosopher.getName() + "!");
+                        } else {
+                            System.out.println("Could not found Philosopher called " + name);
+                        }
+                    } else {
+                        philosopherList.parallelStream()
+                                .forEach(Thread::interrupt);
+                        philosopherList.clear();
+                        System.out.println("Killed all Philosophers!");
+                    }
+                    break;
+                case "q":
+                case "Q":
+                    quit = true;
+                    break;
+            }
         }
 
-        System.out.println("Exit program! [Runtime = " + runtime + "]");
+        // ##########################################################################################
+
+        System.out.println("Exit program!");
 
         // Waiting for all threads to finish
-        executorService.shutdownNow();
+        philosopherList.parallelStream()
+                .forEach(Thread::interrupt);
         try {
-            executorService.awaitTermination(10, TimeUnit.SECONDS);
+            Thread.currentThread().join(TimeUnit.MILLISECONDS.convert(10, TimeUnit.SECONDS));
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

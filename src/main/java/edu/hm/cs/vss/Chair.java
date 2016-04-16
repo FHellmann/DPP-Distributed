@@ -1,14 +1,16 @@
 package edu.hm.cs.vss;
 
+import java.io.Serializable;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Created by Fabio Hellmann on 17.03.2016.
  */
-public interface Chair {
+public interface Chair extends Serializable {
     /**
      * Get a fork related to this seat.
      *
@@ -39,9 +41,17 @@ public interface Chair {
     int getQueueSize();
 
     class Builder {
+        private static int counter = 1;
+        private String nameSuffix = Integer.toString(counter++);
+
+        public Builder setNameUniqueId() {
+            nameSuffix = UUID.randomUUID().toString();
+            return this;
+        }
+
         public Chair create() {
             return new Chair() {
-                private final String name = "Chair-" + UUID.randomUUID().toString();
+                private final String name = "Chair-" + nameSuffix;
                 private final Fork fork = new Fork.Builder().withChair(this).create();
                 private final AtomicBoolean block = new AtomicBoolean(false);
                 private final Semaphore semaphore = new Semaphore(1, true);
@@ -58,10 +68,10 @@ public interface Chair {
 
                 @Override
                 public Optional<Chair> blockIfAvailable() throws InterruptedException {
-                    semaphore.acquire();
-                    if (block.compareAndSet(false, true)) {
+                    if (semaphore.tryAcquire(1, TimeUnit.MINUTES) && block.compareAndSet(false, true)) {
                         return Optional.of(this);
                     }
+                    semaphore.release();
                     return Optional.empty();
                 }
 

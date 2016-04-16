@@ -1,5 +1,6 @@
 package edu.hm.cs.vss;
 
+import java.io.Serializable;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -7,7 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Created by Fabio Hellmann on 17.03.2016.
  */
-public interface Fork {
+public interface Fork extends Serializable {
 
     /**
      * @return <code>true</code> if the fork is available.
@@ -27,6 +28,8 @@ public interface Fork {
     void unblock();
 
     class Builder {
+        private static int counter = 1;
+        private String nameSuffix = Integer.toString(counter++);
         private Chair chair;
 
         public Builder withChair(final Chair chair) {
@@ -34,9 +37,14 @@ public interface Fork {
             return this;
         }
 
+        public Builder setNameUniqueId() {
+            nameSuffix = UUID.randomUUID().toString();
+            return this;
+        }
+
         public Fork create() {
             return new Fork() {
-                private final String name = "Fork-" + UUID.randomUUID().toString();
+                private final String name = "Fork-" + nameSuffix;
                 private final AtomicBoolean block = new AtomicBoolean(false);
 
                 @Override

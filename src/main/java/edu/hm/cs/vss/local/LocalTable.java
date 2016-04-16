@@ -3,51 +3,54 @@ package edu.hm.cs.vss.local;
 import edu.hm.cs.vss.Chair;
 import edu.hm.cs.vss.Table;
 import edu.hm.cs.vss.TableMaster;
+import edu.hm.cs.vss.remote.RmiTable;
 
-import java.io.IOException;
-import java.net.ServerSocket;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Stream;
 
 /**
  * Created by Fabio Hellmann on 14.04.2016.
  */
-public class LocalTable implements Table {
+public class LocalTable extends UnicastRemoteObject implements RmiTable, Table {
     private static final TableMaster DEFAULT_TABLE_MASTER = philosopher -> true;
-    private final List<Table> tables = Collections.synchronizedList(new LinkedList<>());
     private final List<Chair> chairs = Collections.synchronizedList(new ArrayList<>());
     private TableMaster tableMaster = DEFAULT_TABLE_MASTER;
 
-    public LocalTable() throws IOException {
-        tables.add(this);
+    LocalTable() throws RemoteException {
+        super(STATIC_PORT);
+        final Registry registry = LocateRegistry.createRegistry(STATIC_PORT);
+        registry.rebind(Table.class.getSimpleName(), this);
     }
 
     @Override
     public void addTable(final String tableHost) {
-        new Builder().connectTo(tableHost).create().ifPresent(table -> {
-            tables.stream()
-                    .map(Table::getName)
-                    .forEach(table::addTable);
-            tables.add(table);
-        });
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void removeTable(final String tableHost) {
-        tables.parallelStream()
-                .filter(table -> !table.equals(this))
-                .peek(table -> table.removeTable(tableHost))
-                .filter(table -> table.getName().equals(tableHost))
-                .findAny()
-                .ifPresent(tables::remove);
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Chair getChair(int index) throws RemoteException {
+        return chairs.get(index);
+    }
+
+    @Override
+    public int getChairCount() throws RemoteException {
+        return chairs.size();
     }
 
     @Override
     public Stream<Table> getTables() {
-        return tables.stream();
+        throw new UnsupportedOperationException();
     }
 
     @Override

@@ -2,9 +2,6 @@ group 'edu.hm.cs.vss'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
-apply plugin: 'checkstyle'
-apply plugin: 'pmd'
-apply plugin: 'findbugs'
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8

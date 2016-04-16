@@ -17,7 +17,7 @@ import java.util.stream.Stream;
 /**
  * Created by Fabio Hellmann on 17.03.2016.
  */
-public abstract class Philosopher extends Thread {
+public abstract class Philosopher extends Thread implements Serializable {
     public static final int DEFAULT_EAT_ITERATIONS = 3;
     public static final long DEFAULT_TIME_TO_SLEEP = TimeUnit.MILLISECONDS.convert(10, TimeUnit.MILLISECONDS);
     public static final long DEFAULT_TIME_TO_MEDIATE = TimeUnit.MILLISECONDS.convert(5, TimeUnit.MILLISECONDS);
@@ -115,7 +115,7 @@ public abstract class Philosopher extends Thread {
             if(getTable().getTableMaster().isAllowedToTakeSeat(this)) {
                 final int minQueueSize = getTable().getChairs().parallel().mapToInt(Chair::getQueueSize).min().orElse(0);
                 chairOptional = getTable().getChairs()
-                        .filter(chair -> minQueueSize <= chair.getQueueSize())
+                        .filter(chair -> minQueueSize >= chair.getQueueSize())
                         .findFirst();
                 if(chairOptional.isPresent()) {
                     try {
