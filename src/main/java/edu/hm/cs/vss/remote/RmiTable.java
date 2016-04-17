@@ -1,5 +1,6 @@
 package edu.hm.cs.vss.remote;
 
+import edu.hm.cs.vss.Backup;
 import edu.hm.cs.vss.Chair;
 import edu.hm.cs.vss.TableMaster;
 
@@ -19,4 +20,6 @@ public interface RmiTable extends Remote {
     int getChairCount() throws RemoteException;
 
     TableMaster getMaster() throws RemoteException;
+
+    Backup getBackupDetails() throws RemoteException;
 }

@@ -49,16 +49,6 @@ public class Main {
                 .setFileLogger()
                 .create();
 
-        final List<Philosopher> philosopherList = IntStream.rangeClosed(1, philosopherCount)
-                .mapToObj(index -> new Philosopher.Builder()
-                        .setTable(table)
-                        .setUniqueName()
-                        .setVeryHungry(veryHungry && index == 1)
-                        .setFileLogger()
-                        .create())
-                .peek(Thread::start)
-                .collect(Collectors.toList());
-
         // ##########################################################################################
         // User Input
         // ##########################################################################################
@@ -77,18 +67,18 @@ public class Main {
                 case "help":
                 case "Help": {
                     System.out.println("? / h / H / help / Help \t\t Zeigt die Hilfe an.");
-                    System.out.println("s / S / status / Status \t\t Zeigt den Status an.");
+                    System.out.println("s / S / status / Backup \t\t Zeigt den Backup an.");
                 } break;
                 */
                 case "s":
                 case "S":
                 case "status":
-                case "Status": {
+                case "Backup": {
                     System.out.println("######################## STATUS ########################");
                     System.out.println("Table(s):");
                     table.getTables().peek(tmp -> System.out.println("\t- " + tmp.getName())).forEach(tmp -> tmp.getChairs().map(Object::toString).map(name -> "\t\t+ " + name).forEach(System.out::println));
                     System.out.println("Local Philosopher(s):");
-                    philosopherList.stream().map(Thread::getName).map(name -> "\t- " + name).forEach(System.out::println);
+                    table.getPhilosophers().map(Thread::getName).map(name -> "\t- " + name).forEach(System.out::println);
                     System.out.println("######################### ENDE #########################");
                 }
                 break;
@@ -137,7 +127,7 @@ public class Main {
                 break;
                 case "p":
                 case "P": {
-                    System.out.print("Add philosophers ('-' = delete): ");
+                    System.out.print("Add philosophers: ");
                     int count = scanner.nextInt();
 
                     if (count > 0) {
@@ -149,26 +139,9 @@ public class Main {
                                         .setFileLogger()
                                         .setTable(table)
                                         .create())
-                                .peek(philosopherList::add)
-                                .forEach(Thread::start);
+                                .forEach(table::addPhilosopher);
 
                         System.out.println("Added " + count + " Philosopher(s)!");
-                    } else {
-                        count *= -1;
-
-                        System.out.println("Killing " + count + " Philosopher(s)...");
-                        if (count < philosopherList.size()) {
-                            IntStream.rangeClosed(0, count - 1)
-                                    .mapToObj(philosopherList::get)
-                                    .peek(Thread::interrupt)
-                                    .peek(philosopherList::remove)
-                                    .forEach(philosopher -> System.out.println("Killed Philosopher " + philosopher.getName() + "!"));
-                        } else {
-                            philosopherList.parallelStream()
-                                    .forEach(Thread::interrupt);
-                            philosopherList.clear();
-                            System.out.println("Killed all Philosophers!");
-                        }
                     }
                 }
                 break;
@@ -177,7 +150,7 @@ public class Main {
                 case "p remove":
                 case "P remove":
                     System.out.println("Philosopher(s):");
-                    philosopherList.stream()
+                    table.getPhilosophers()
                             .map(Thread::getName)
                             .forEach(System.out::println);
 
@@ -187,21 +160,20 @@ public class Main {
                     if (name.length() > 0) {
                         System.out.println("Trying to kill " + name + "...");
 
-                        final Optional<Philosopher> any = philosopherList.stream()
+                        final Optional<Philosopher> any = table.getPhilosophers()
                                 .filter(philosopher -> philosopher.getName().equals(name))
                                 .findAny();
                         if (any.isPresent()) {
                             final Philosopher philosopher = any.get();
-                            philosopher.interrupt();
-                            philosopherList.remove(philosopher);
+                            table.removePhilosopher(philosopher);
                             System.out.println("Killed Philosopher " + philosopher.getName() + "!");
                         } else {
                             System.out.println("Could not found Philosopher called " + name);
                         }
                     } else {
-                        philosopherList.parallelStream()
-                                .forEach(Thread::interrupt);
-                        philosopherList.clear();
+                        table.getPhilosophers().collect(Collectors.toList())
+                                .stream()
+                                .forEach(table::removePhilosopher);
                         System.out.println("Killed all Philosophers!");
                     }
                     break;
@@ -217,7 +189,7 @@ public class Main {
         System.out.println("Exit program!");
 
         // Waiting for all threads to finish
-        philosopherList.parallelStream()
+        table.getPhilosophers().parallel()
                 .forEach(Thread::interrupt);
         try {
             Thread.currentThread().join(TimeUnit.MILLISECONDS.convert(10, TimeUnit.SECONDS));
@@ -233,7 +205,7 @@ public class Main {
         logger.log("CPU-Cores (available to the JVM) = " + Runtime.getRuntime().availableProcessors());
         logger.log("Memory (available to the JVM) = " + Runtime.getRuntime().maxMemory());
         logger.log("# Philosophers");
-        philosopherList.stream()
+        table.getPhilosophers()
                 .map(philosopher -> philosopher.getName() + ": " + philosopher.getMealCount())
                 .forEach(logger::log);
         logger.log("############### END #################");

@@ -100,6 +100,8 @@ public abstract class Philosopher extends Thread {
      */
     public abstract long getTimeToMediate();
 
+    public abstract boolean isHungry();
+
     public abstract Stream<Fork> getForks();
 
     public abstract void setOnStandUpListener(final OnStandUpListener listener);
@@ -308,7 +310,7 @@ public abstract class Philosopher extends Thread {
     public static class Builder {
         private static int count = 1;
         private String namePrefix = "";
-        private String nameSuffix = Integer.toString(count++);
+        private String nameSuffix = ""; //Integer.toString(count++);
         private String name = "Philosopher-";
         private Logger logger = new EmptyLogger();
         private Table table;
@@ -316,6 +318,7 @@ public abstract class Philosopher extends Thread {
         private long timeEat = DEFAULT_TIME_TO_EAT;
         private long timeMediate = DEFAULT_TIME_TO_MEDIATE;
         private boolean veryHungry;
+        private int takenMeals = 0;
 
         public Builder name(final String name) {
             this.name = name;
@@ -364,11 +367,19 @@ public abstract class Philosopher extends Thread {
             return this;
         }
 
+        public Builder setTakenMeals(int takenMeals) {
+            this.takenMeals = takenMeals;
+            return this;
+        }
+
         public Philosopher create() {
             if (table == null) {
                 throw new NullPointerException("Table can not be null. Use new Philosopher.Builder().setTable(Table).create()");
             }
-            return new LocalPhilosopher(namePrefix + name + nameSuffix, logger, table, timeSleep, timeEat, timeMediate, veryHungry);
+            final LocalPhilosopher philosopher = new LocalPhilosopher(namePrefix + name + nameSuffix, logger, table, timeSleep, timeEat, timeMediate, veryHungry);
+            IntStream.rangeClosed(1, takenMeals)
+                    .forEach(index -> philosopher.incrementMealCount());
+            return philosopher;
         }
     }
 }

@@ -16,11 +16,12 @@ import java.util.stream.Stream;
  * Created by Fabio Hellmann on 17.03.2016.
  */
 public class LocalPhilosopher extends Philosopher {
-    private Logger logger;
+    private final Logger logger;
     private final Table table;
     private final long timeSleep;
     private final long timeEat;
     private final long timeMediate;
+    private final boolean veryHungry;
     private List<Fork> forks = new ArrayList<>();
     private int eatIterations;
     private int mealCount;
@@ -34,23 +35,14 @@ public class LocalPhilosopher extends Philosopher {
                             final long timeEat,
                             final long timeMediate,
                             final boolean veryHungry) {
-        this(name, logger, table, timeSleep, timeEat, veryHungry ? timeMediate / 2 : timeMediate, veryHungry ? DEFAULT_EAT_ITERATIONS * 2 : DEFAULT_EAT_ITERATIONS);
-    }
-
-    private LocalPhilosopher(final String name,
-                             final Logger logger,
-                             final Table table,
-                             final long timeSleep,
-                             final long timeEat,
-                             final long timeMediate,
-                             final int eatIterations) {
         setName(name);
         this.logger = logger;
         this.table = table;
         this.timeSleep = timeSleep;
         this.timeEat = timeEat;
         this.timeMediate = timeMediate;
-        this.eatIterations = eatIterations;
+        this.veryHungry = veryHungry;
+        this.eatIterations = veryHungry ? DEFAULT_EAT_ITERATIONS * 2 : DEFAULT_EAT_ITERATIONS;
     }
 
     @Override
@@ -109,6 +101,10 @@ public class LocalPhilosopher extends Philosopher {
     @Override
     public long getTimeToMediate() {
         return timeMediate;
+    }
+
+    public boolean isHungry() {
+        return veryHungry;
     }
 
     @Override

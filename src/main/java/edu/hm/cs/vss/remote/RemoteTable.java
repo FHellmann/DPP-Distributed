@@ -1,31 +1,29 @@
 package edu.hm.cs.vss.remote;
 
-import edu.hm.cs.vss.Chair;
-import edu.hm.cs.vss.Table;
-import edu.hm.cs.vss.TableMaster;
+import edu.hm.cs.vss.*;
 import edu.hm.cs.vss.log.Logger;
 
-import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
+import java.util.Observable;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
  * Created by Fabio Hellmann on 14.04.2016.
  */
-public class RemoteTable implements Table {
-
-    private final RemoteRmiTable table;
+public class RemoteTable extends Observable implements Table {
+    private final RmiTable table;
     private final String host;
     private final Logger logger;
+    private Backup backup;
 
     public RemoteTable(final String host, Logger logger) throws Exception {
         this.host = host;
         this.logger = logger;
-        table = new RemoteRmiTable(host);
+        final Registry registry = LocateRegistry.getRegistry(host, STATIC_PORT);
+        table = (RmiTable) registry.lookup(Table.class.getSimpleName());
     }
 
     @Override
@@ -36,27 +34,46 @@ public class RemoteTable implements Table {
     @Override
     public void addTable(final String tableHost) {
         try {
-            logger.log("Requesting the remote table " + table.getRef().remoteToString() + " to add the table " + tableHost);
+            logger.log("Requesting the remote table " + host + " to add the table " + tableHost);
+            backup = table.getBackupDetails();
             table.addTable(tableHost);
         } catch (RemoteException e) {
             logger.log(e.getMessage());
             e.printStackTrace();
+            notifyObservers(this);
         }
     }
 
     @Override
     public void removeTable(final String tableHost) {
         try {
-            logger.log("Requesting the remote table " + table.getRef().remoteToString() + " to delete the table " + tableHost);
+            logger.log("Requesting the remote table " + host + " to delete the table " + tableHost);
+            backup = table.getBackupDetails();
             table.removeTable(tableHost);
         } catch (RemoteException e) {
             logger.log(e.getMessage());
             e.printStackTrace();
+            notifyObservers(this);
         }
     }
 
     @Override
     public Stream<Table> getTables() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Philosopher addPhilosopher(Philosopher philosopher) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void removePhilosopher(Philosopher philosopher) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Stream<Philosopher> getPhilosophers() {
         throw new UnsupportedOperationException();
     }
 
@@ -73,13 +90,15 @@ public class RemoteTable implements Table {
     @Override
     public Stream<Chair> getChairs() {
         try {
-            logger.log("Requesting chairs from remote table " + table.getRef().remoteToString());
+            logger.log("Requesting chairs from remote table " + host);
+            backup = table.getBackupDetails();
             return IntStream.rangeClosed(0, table.getChairCount() - 1)
                     .mapToObj(index -> {
                         try {
                             return table.getChair(index);
                         } catch (RemoteException e) {
                             e.printStackTrace();
+                            notifyObservers(this);
                         }
                         return null;
                     })
@@ -87,6 +106,7 @@ public class RemoteTable implements Table {
         } catch (RemoteException e) {
             logger.log(e.getMessage());
             e.printStackTrace();
+            notifyObservers(this);
         }
         return Stream.empty();
     }
@@ -103,48 +123,19 @@ public class RemoteTable implements Table {
 
     @Override
     public TableMaster getTableMaster() {
-        logger.log("Requesting the remote table " + table.getRef().remoteToString() + " to check if the philosopher is allowed to take a seat");
+        logger.log("Requesting the remote table " + host + " to check if the philosopher is allowed to take a seat");
         try {
+            backup = table.getBackupDetails();
             return table.getMaster();
         } catch (RemoteException e) {
             logger.log(e.getMessage());
             e.printStackTrace();
+            notifyObservers(this);
         }
         return (TableMaster) philosopher -> true;
     }
 
-    private static class RemoteRmiTable extends UnicastRemoteObject implements RmiTable {
-        private final RmiTable table;
-
-        RemoteRmiTable(final String host) throws RemoteException, NotBoundException {
-            super(STATIC_PORT);
-            final Registry registry = LocateRegistry.getRegistry(host, STATIC_PORT);
-            table = (RmiTable) registry.lookup(Table.class.getSimpleName());
-        }
-
-        @Override
-        public void addTable(String host) throws RemoteException {
-            table.addTable(host);
-        }
-
-        @Override
-        public void removeTable(String host) throws RemoteException {
-            table.removeTable(host);
-        }
-
-        @Override
-        public Chair getChair(int index) throws RemoteException {
-            return table.getChair(index);
-        }
-
-        @Override
-        public int getChairCount() throws RemoteException {
-            return table.getChairCount();
-        }
-
-        @Override
-        public TableMaster getMaster() throws RemoteException {
-            return table.getMaster();
-        }
+    public Backup getBackup() {
+        return backup;
     }
 }

@@ -6,6 +6,7 @@ import edu.hm.cs.vss.log.FileLogger;
 import edu.hm.cs.vss.log.Logger;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
@@ -42,6 +43,25 @@ public interface Table {
      * @return
      */
     Stream<Table> getTables();
+
+    /**
+     *
+     * @param philosopher
+     * @return
+     */
+    Philosopher addPhilosopher(final Philosopher philosopher);
+
+    /**
+     *
+     * @param philosopher
+     */
+    void removePhilosopher(final Philosopher philosopher);
+
+    /**
+     *
+     * @return
+     */
+    Stream<Philosopher> getPhilosophers();
 
     /**
      * Add a chair to the table.
@@ -90,6 +110,12 @@ public interface Table {
      * @return the table master.
      */
     TableMaster getTableMaster();
+
+    /**
+     *
+     * @return
+     */
+    Backup getBackup();
 
     class Builder {
         private int amountChairs;
