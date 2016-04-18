@@ -3,11 +3,9 @@ package edu.hm.cs.vss;
 import java.io.Serializable;
 
 /**
- * Created by Fabio Hellmann on 30.03.2016.
+ * The Table Master sits at every table. He decides whether a philosopher is allowed to take a seat or not.
  */
 public interface TableMaster extends Serializable {
-    int MAX_DEVIATION = 10;
-
     /**
      * Notify the table master that a new philosopher come to his table.
      *

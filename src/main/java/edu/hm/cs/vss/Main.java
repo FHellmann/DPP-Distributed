@@ -7,7 +7,6 @@ import edu.hm.cs.vss.log.merger.LogMerger;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.concurrent.TimeUnit;
@@ -47,7 +46,7 @@ public class Main {
                 .withChairCount(chairCount)
                 .withTableMaster(new LocalTableMaster())
                 .setFileLogger()
-                .create();
+                .createNetwork();
 
         // ##########################################################################################
         // User Input
@@ -90,7 +89,7 @@ public class Main {
                     final String hostName = scanner.next();
 
                     System.out.println("Try to connect to table " + hostName);
-                    table.addTable(hostName);
+                    table.connectToTable(hostName);
                 }
                 break;
                 case "c":

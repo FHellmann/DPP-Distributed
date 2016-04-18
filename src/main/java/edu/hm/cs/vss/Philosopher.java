@@ -1,7 +1,7 @@
 package edu.hm.cs.vss;
 
 import edu.hm.cs.vss.local.LocalPhilosopher;
-import edu.hm.cs.vss.log.EmptyLogger;
+import edu.hm.cs.vss.log.DummyLogger;
 import edu.hm.cs.vss.log.FileLogger;
 import edu.hm.cs.vss.log.Logger;
 
@@ -18,11 +18,11 @@ import java.util.stream.Stream;
  * Created by Fabio Hellmann on 17.03.2016.
  */
 public abstract class Philosopher extends Thread {
-    public static final int DEFAULT_EAT_ITERATIONS = 3;
-    public static final long DEFAULT_TIME_TO_SLEEP = TimeUnit.MILLISECONDS.convert(10, TimeUnit.MILLISECONDS);
-    public static final long DEFAULT_TIME_TO_MEDIATE = TimeUnit.MILLISECONDS.convert(5, TimeUnit.MILLISECONDS);
-    public static final long DEFAULT_TIME_TO_EAT = TimeUnit.MILLISECONDS.convert(1, TimeUnit.MILLISECONDS);
-    public static final long DEFAULT_TIME_TO_BANN = TimeUnit.MILLISECONDS.convert(5, TimeUnit.MILLISECONDS);
+    protected static final int DEFAULT_EAT_ITERATIONS = 3;
+    private static final long DEFAULT_TIME_TO_SLEEP = TimeUnit.MILLISECONDS.convert(10, TimeUnit.MILLISECONDS);
+    private static final long DEFAULT_TIME_TO_MEDIATE = TimeUnit.MILLISECONDS.convert(5, TimeUnit.MILLISECONDS);
+    private static final long DEFAULT_TIME_TO_EAT = TimeUnit.MILLISECONDS.convert(1, TimeUnit.MILLISECONDS);
+    protected static final long DEFAULT_TIME_TO_BANN = TimeUnit.MILLISECONDS.convert(5, TimeUnit.MILLISECONDS);
     private static final int MAX_DEADLOCK_COUNT = 10;
     private static final DeadlockFunction DEADLOCK_FUNCTION = (philosopher, forks) -> {
         forks.parallelStream().forEach(Fork::unblock);
@@ -121,14 +121,14 @@ public abstract class Philosopher extends Thread {
                 final int minQueueSize = getTable().getTables()
                         .flatMap(Table::getChairs)
                         .parallel()
-                        .mapToInt(Chair::getQueueSize)
+                        .mapToInt(Chair::getWaitingPhilosopherCount)
                         .min()
                         .orElse(0);
 
                 // searching for the chair with a minimal queue size
                 chairOptional = getTable().getTables()
                         .flatMap(Table::getChairs)
-                        .filter(chair -> minQueueSize >= chair.getQueueSize())
+                        .filter(chair -> minQueueSize >= chair.getWaitingPhilosopherCount())
                         .findFirst();
 
                 if (chairOptional.isPresent()) {
@@ -310,14 +310,14 @@ public abstract class Philosopher extends Thread {
     public static class Builder {
         private static int count = 1;
         private String namePrefix = "";
-        private String nameSuffix = ""; //Integer.toString(count++);
+        private String nameSuffix = "";
         private String name = "Philosopher-";
-        private Logger logger = new EmptyLogger();
+        private Logger logger = new DummyLogger();
         private Table table;
         private long timeSleep = DEFAULT_TIME_TO_SLEEP;
         private long timeEat = DEFAULT_TIME_TO_EAT;
         private long timeMediate = DEFAULT_TIME_TO_MEDIATE;
-        private boolean veryHungry;
+        private boolean hungry;
         private int takenMeals = 0;
 
         public Builder name(final String name) {
@@ -327,6 +327,11 @@ public abstract class Philosopher extends Thread {
 
         public Builder setUniqueName() {
             this.nameSuffix = UUID.randomUUID().toString();
+            return this;
+        }
+
+        public Builder setIdName() {
+            this.nameSuffix = Integer.toString(count++);
             return this;
         }
 
@@ -359,9 +364,9 @@ public abstract class Philosopher extends Thread {
             return this;
         }
 
-        public Builder setVeryHungry(final boolean veryHungry) {
-            this.veryHungry = veryHungry;
-            if (veryHungry) {
+        public Builder setHungry(final boolean hungry) {
+            this.hungry = hungry;
+            if (hungry) {
                 this.namePrefix = "Hungry-";
             }
             return this;
@@ -374,9 +379,9 @@ public abstract class Philosopher extends Thread {
 
         public Philosopher create() {
             if (table == null) {
-                throw new NullPointerException("Table can not be null. Use new Philosopher.Builder().setTable(Table).create()");
+                throw new NullPointerException("Table can not be null. Use new Philosopher.Builder().setTable(Table).[...].create()");
             }
-            final LocalPhilosopher philosopher = new LocalPhilosopher(namePrefix + name + nameSuffix, logger, table, timeSleep, timeEat, timeMediate, veryHungry);
+            final LocalPhilosopher philosopher = new LocalPhilosopher(namePrefix + name + nameSuffix, logger, table, timeSleep, timeEat, timeMediate, hungry);
             IntStream.rangeClosed(1, takenMeals)
                     .forEach(index -> philosopher.incrementMealCount());
             return philosopher;

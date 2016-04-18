@@ -17,14 +17,19 @@ public class FileLogger implements Logger {
 
     @Override
     public void log(String text) {
+        PrintWriter writer = null;
         try {
-            final PrintWriter writer = new PrintWriter(new FileWriter(fileName, true), true);
+            writer = new PrintWriter(new FileWriter(fileName, true), true);
             writer.write(String.format(TIMESTAMP_FORMAT, new Date()) + text);
             writer.write("\n");
             writer.flush();
-            writer.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            // Ignore an error
+            // e.printStackTrace();
+        } finally {
+            if (writer != null) {
+                writer.close();
+            }
         }
     }
 }

@@ -1,12 +1,12 @@
 package edu.hm.cs.vss;
 
 import edu.hm.cs.vss.local.LocalTable;
-import edu.hm.cs.vss.log.EmptyLogger;
+import edu.hm.cs.vss.local.LocalTablePool;
+import edu.hm.cs.vss.log.DummyLogger;
 import edu.hm.cs.vss.log.FileLogger;
 import edu.hm.cs.vss.log.Logger;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
@@ -18,8 +18,12 @@ import java.util.stream.Stream;
  * Created by Fabio Hellmann on 17.03.2016.
  */
 public interface Table {
-    int STATIC_PORT = 32984;
+    int NETWORK_PORT = 32984;
 
+    /**
+     * 
+     * @return
+     */
     default String getName() {
         try {
             return InetAddress.getLocalHost().getHostAddress();
@@ -32,12 +36,12 @@ public interface Table {
     /**
      * @param tableHost
      */
-    void addTable(final String tableHost);
+    void connectToTable(final String tableHost);
 
     /**
      * @param tableHost
      */
-    void removeTable(final String tableHost);
+    void disconnectFromTable(final String tableHost);
 
     /**
      * @return
@@ -78,9 +82,7 @@ public interface Table {
     /**
      * @return
      */
-    default Stream<Chair> getChairs() {
-        return getTables().flatMap(Table::getChairs);
-    }
+    Stream<Chair> getChairs();
 
     /**
      * Get the neighbour chair of another chair. (If there is only one chair, then the same chair will be returned)
@@ -112,15 +114,16 @@ public interface Table {
     TableMaster getTableMaster();
 
     /**
+     * Get the backup service.
      *
-     * @return
+     * @return the backup service.
      */
-    Backup getBackup();
+    BackupService getBackupService();
 
     class Builder {
         private int amountChairs;
         private TableMaster tableMaster = philosopher -> true;
-        private Logger logger = new EmptyLogger();
+        private Logger logger = new DummyLogger();
 
         public Builder withChairCount(final int amountOfChairs) {
             amountChairs = amountOfChairs;
@@ -137,8 +140,17 @@ public interface Table {
             return this;
         }
 
-        public Table create() throws IOException {
+        public Table createLocal() {
             final Table table = new LocalTable(logger);
+            table.setTableMaster(tableMaster);
+            IntStream.rangeClosed(1, amountChairs - 1)
+                    .mapToObj(index -> new Chair.Builder().setNameUniqueId().create())
+                    .forEach(table::addChair);
+            return table;
+        }
+
+        public Table createNetwork() throws IOException {
+            final Table table = new LocalTablePool(logger);
             table.setTableMaster(tableMaster);
             IntStream.rangeClosed(1, amountChairs - 1)
                     .mapToObj(index -> new Chair.Builder().setNameUniqueId().create())

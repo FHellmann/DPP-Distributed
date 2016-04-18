@@ -36,9 +36,11 @@ public interface Chair extends Serializable {
     void unblock();
 
     /**
-     * @return
+     * Get the amount of waiting philosophers for this chair.
+     *
+     * @return the amount of waiting philosophers.
      */
-    int getQueueSize();
+    int getWaitingPhilosopherCount();
 
     class Builder implements Serializable {
         private static int counter = 1;
@@ -82,7 +84,7 @@ public interface Chair extends Serializable {
                 }
 
                 @Override
-                public int getQueueSize() {
+                public int getWaitingPhilosopherCount() {
                     return semaphore.getQueueLength() + (isAvailable() ? 0 : 1);
                 }
 

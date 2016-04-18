@@ -22,7 +22,7 @@ public class RemoteTable extends Observable implements Table {
     public RemoteTable(final String host, Logger logger) throws Exception {
         this.host = host;
         this.logger = logger;
-        final Registry registry = LocateRegistry.getRegistry(host, STATIC_PORT);
+        final Registry registry = LocateRegistry.getRegistry(host, NETWORK_PORT);
         table = (RmiTable) registry.lookup(Table.class.getSimpleName());
     }
 
@@ -32,7 +32,7 @@ public class RemoteTable extends Observable implements Table {
     }
 
     @Override
-    public void addTable(final String tableHost) {
+    public void connectToTable(final String tableHost) {
         try {
             logger.log("Requesting the remote table " + host + " to add the table " + tableHost);
             backup = table.getBackupDetails();
@@ -40,12 +40,12 @@ public class RemoteTable extends Observable implements Table {
         } catch (RemoteException e) {
             logger.log(e.getMessage());
             e.printStackTrace();
-            notifyObservers(this);
+            notifyObservers(RemoteTable.this);
         }
     }
 
     @Override
-    public void removeTable(final String tableHost) {
+    public void disconnectFromTable(final String tableHost) {
         try {
             logger.log("Requesting the remote table " + host + " to delete the table " + tableHost);
             backup = table.getBackupDetails();
@@ -53,7 +53,7 @@ public class RemoteTable extends Observable implements Table {
         } catch (RemoteException e) {
             logger.log(e.getMessage());
             e.printStackTrace();
-            notifyObservers(this);
+            notifyObservers(RemoteTable.this);
         }
     }
 
@@ -98,7 +98,7 @@ public class RemoteTable extends Observable implements Table {
                             return table.getChair(index);
                         } catch (RemoteException e) {
                             e.printStackTrace();
-                            notifyObservers(this);
+                            notifyObservers(RemoteTable.this);
                         }
                         return null;
                     })
@@ -106,18 +106,13 @@ public class RemoteTable extends Observable implements Table {
         } catch (RemoteException e) {
             logger.log(e.getMessage());
             e.printStackTrace();
-            notifyObservers(this);
+            notifyObservers(RemoteTable.this);
         }
         return Stream.empty();
     }
 
     @Override
     public Chair getNeighbourChair(Chair chair) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void setTableMaster(TableMaster tableMaster) {
         throw new UnsupportedOperationException();
     }
 
@@ -130,12 +125,50 @@ public class RemoteTable extends Observable implements Table {
         } catch (RemoteException e) {
             logger.log(e.getMessage());
             e.printStackTrace();
-            notifyObservers(this);
+            notifyObservers(RemoteTable.this);
         }
         return (TableMaster) philosopher -> true;
     }
 
-    public Backup getBackup() {
-        return backup;
+    @Override
+    public void setTableMaster(TableMaster tableMaster) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public BackupService getBackupService() {
+        return new BackupService() {
+            @Override
+            public Backup createBackup() {
+                return backup;
+            }
+
+            @Override
+            public void storeBackup(Backup backup) {
+                try {
+                    table.safeBackup(backup);
+                } catch (RemoteException e) {
+                    logger.log(e.getMessage());
+                    e.printStackTrace();
+                    notifyObservers(RemoteTable.this);
+                }
+            }
+
+            @Override
+            public void restoreBackup(String host) {
+
+            }
+
+            @Override
+            public void deleteBackup(String host) {
+                try {
+                    table.deleteBackup(host);
+                } catch (RemoteException e) {
+                    logger.log(e.getMessage());
+                    e.printStackTrace();
+                    notifyObservers(RemoteTable.this);
+                }
+            }
+        };
     }
 }
