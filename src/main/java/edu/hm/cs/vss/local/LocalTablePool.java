@@ -5,6 +5,7 @@ import edu.hm.cs.vss.log.DummyLogger;
 import edu.hm.cs.vss.log.Logger;
 import edu.hm.cs.vss.remote.RemoteTable;
 import edu.hm.cs.vss.remote.RmiTable;
+import edu.hm.cs.vss.remote.RmiTableHandler;
 
 import java.io.IOException;
 import java.rmi.registry.LocateRegistry;
@@ -31,7 +32,7 @@ public class LocalTablePool extends UnicastRemoteObject implements Table, Observ
         this.localTable = new LocalTable(logger);
         this.logger = logger;
         final Registry registry = LocateRegistry.createRegistry(NETWORK_PORT);
-        registry.rebind(Table.class.getSimpleName(), RmiTable.create(this));
+        registry.rebind(Table.class.getSimpleName(), new RmiTableHandler(this));
         tables.add(this);
     }
 

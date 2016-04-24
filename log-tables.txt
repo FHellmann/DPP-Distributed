@@ -1,0 +1,3 @@
+18:12:40.298 Try to connect to remote table 192.168.178.38...
+18:12:40.495 error unmarshalling return; nested exception is: 
+	java.io.WriteAbortedException: writing aborted; java.io.NotSerializableException: edu.hm.cs.vss.remote.RmiTable$1
