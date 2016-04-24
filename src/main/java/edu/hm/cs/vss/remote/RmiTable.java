@@ -1,6 +1,5 @@
 package edu.hm.cs.vss.remote;
 
-import edu.hm.cs.vss.Backup;
 import edu.hm.cs.vss.Chair;
 import edu.hm.cs.vss.Table;
 import edu.hm.cs.vss.TableMaster;
@@ -21,6 +20,38 @@ public interface RmiTable extends Remote, Table {
         disconnectFromTable(host);
     }
 
+    default void addPhilosopher(final String host, final String name, final boolean hungry) throws RemoteException {
+        getTables().parallel()
+                .skip(1)
+                .filter(table -> table.getName().equals(host))
+                .findAny()
+                .ifPresent(table -> table.getBackupService().addPhilosopher(name, hungry));
+    }
+
+    default void removePhilosopher(final String host, final String name) throws RemoteException {
+        getTables().parallel()
+                .skip(1)
+                .filter(table -> table.getName().equals(host))
+                .findAny()
+                .ifPresent(table -> table.getBackupService().removePhilosopher(name));
+    }
+
+    default void addChair(final String host, final String name) throws RemoteException {
+        getTables().parallel()
+                .skip(1)
+                .filter(table -> table.getName().equals(host))
+                .findAny()
+                .ifPresent(table -> table.getBackupService().addChair(name));
+    }
+
+    default void removeChair(final String host, final String name) throws RemoteException {
+        getTables().parallel()
+                .skip(1)
+                .filter(table -> table.getName().equals(host))
+                .findAny()
+                .ifPresent(table -> table.getBackupService().removeChair(name));
+    }
+
     default Chair getChair(final int index) throws RemoteException {
         return getChairs().collect(Collectors.toList()).get(index);
     }
@@ -31,17 +62,5 @@ public interface RmiTable extends Remote, Table {
 
     default TableMaster getMaster() throws RemoteException {
         return getTableMaster();
-    }
-
-    default Backup getBackupDetails() throws RemoteException {
-        return getBackupService().createBackup();
-    }
-
-    default void safeBackup(final Backup backup) throws RemoteException {
-        getBackupService().storeBackup(backup);
-    }
-
-    default void deleteBackup(final String host) throws RemoteException {
-        getBackupService().deleteBackup(host);
     }
 }

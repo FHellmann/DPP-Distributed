@@ -44,16 +44,20 @@ public interface Chair extends Serializable {
 
     class Builder implements Serializable {
         private static int counter = 1;
-        private String nameSuffix = Integer.toString(counter++);
+        private String name = "Chair-" + Integer.toString(counter++);
 
         public Builder setNameUniqueId() {
-            nameSuffix = UUID.randomUUID().toString();
+            name = "Chair-" + UUID.randomUUID().toString();
+            return this;
+        }
+
+        public Builder setName(String name) {
+            this.name = name;
             return this;
         }
 
         public Chair create() {
             return new Chair() {
-                private final String name = "Chair-" + nameSuffix;
                 private final Fork fork = new Fork.Builder().withChair(this).setNameUniqueId().create();
                 private final AtomicBoolean block = new AtomicBoolean(false);
                 private final Semaphore semaphore = new Semaphore(1, true);

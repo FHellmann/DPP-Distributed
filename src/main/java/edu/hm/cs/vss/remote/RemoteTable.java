@@ -13,15 +13,16 @@ import java.util.stream.Stream;
 /**
  * Created by Fabio Hellmann on 14.04.2016.
  */
-public class RemoteTable extends Observable implements Table {
-    private final RmiTable table;
+public class RemoteTable extends Observable implements RmiTable {
     private final String host;
     private final Logger logger;
-    private Backup backup;
+    private final RmiTable table;
+    private final BackupService backupService;
 
     public RemoteTable(final String host, Logger logger) throws Exception {
         this.host = host;
         this.logger = logger;
+        this.backupService = BackupService.create();
         final Registry registry = LocateRegistry.getRegistry(host, NETWORK_PORT);
         table = (RmiTable) registry.lookup(Table.class.getSimpleName());
     }
@@ -35,7 +36,6 @@ public class RemoteTable extends Observable implements Table {
     public void connectToTable(final String tableHost) {
         try {
             logger.log("Requesting the remote table " + host + " to add the table " + tableHost);
-            backup = table.getBackupDetails();
             table.addTable(tableHost);
         } catch (RemoteException e) {
             logger.log(e.getMessage());
@@ -48,7 +48,6 @@ public class RemoteTable extends Observable implements Table {
     public void disconnectFromTable(final String tableHost) {
         try {
             logger.log("Requesting the remote table " + host + " to delete the table " + tableHost);
-            backup = table.getBackupDetails();
             table.removeTable(tableHost);
         } catch (RemoteException e) {
             logger.log(e.getMessage());
@@ -91,7 +90,6 @@ public class RemoteTable extends Observable implements Table {
     public Stream<Chair> getChairs() {
         try {
             logger.log("Requesting chairs from remote table " + host);
-            backup = table.getBackupDetails();
             return IntStream.rangeClosed(0, table.getChairCount() - 1)
                     .mapToObj(index -> {
                         try {
@@ -120,7 +118,6 @@ public class RemoteTable extends Observable implements Table {
     public TableMaster getTableMaster() {
         logger.log("Requesting the remote table " + host + " to check if the philosopher is allowed to take a seat");
         try {
-            backup = table.getBackupDetails();
             return table.getMaster();
         } catch (RemoteException e) {
             logger.log(e.getMessage());
@@ -131,44 +128,12 @@ public class RemoteTable extends Observable implements Table {
     }
 
     @Override
-    public void setTableMaster(TableMaster tableMaster) {
-        throw new UnsupportedOperationException();
+    public BackupService getBackupService() {
+        return backupService;
     }
 
     @Override
-    public BackupService getBackupService() {
-        return new BackupService() {
-            @Override
-            public Backup createBackup() {
-                return backup;
-            }
-
-            @Override
-            public void storeBackup(Backup backup) {
-                try {
-                    table.safeBackup(backup);
-                } catch (RemoteException e) {
-                    logger.log(e.getMessage());
-                    e.printStackTrace();
-                    notifyObservers(RemoteTable.this);
-                }
-            }
-
-            @Override
-            public void restoreBackup(String host) {
-
-            }
-
-            @Override
-            public void deleteBackup(String host) {
-                try {
-                    table.deleteBackup(host);
-                } catch (RemoteException e) {
-                    logger.log(e.getMessage());
-                    e.printStackTrace();
-                    notifyObservers(RemoteTable.this);
-                }
-            }
-        };
+    public void setTableMaster(TableMaster tableMaster) {
+        throw new UnsupportedOperationException();
     }
 }

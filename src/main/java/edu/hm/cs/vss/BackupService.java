@@ -1,130 +1,97 @@
 package edu.hm.cs.vss;
 
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * The Backup Service is responsible for creating, storing and restoring backups.
  */
-public interface BackupService {
+public interface BackupService extends Serializable {
     /**
      * Creates a new Backup Service instance with a basic backup store.
      *
-     * @param table the backup service is responsible for.
      * @return the backup service.
      */
-    static BackupService create(final Table table) {
+    static BackupService create() {
         return new BackupService() {
-            private final ConcurrentMap<String, Backup> hostBackupMap = new ConcurrentHashMap<>();
+            private final List<Chair> chairList = Collections.synchronizedList(new ArrayList<>());
+            private final List<Philosopher> philosopherList = Collections.synchronizedList(new ArrayList<>());
 
             @Override
-            public Backup createBackup() {
-                final String host = table.getName();
-                final int cpuCores = Runtime.getRuntime().availableProcessors();
-                final int chairCount = (int) table.getChairs().count();
-                final List<String> philosopherNames = table.getPhilosophers().map(Philosopher::getName)
-                        .collect(Collectors.toList());
-                final List<Integer> philosopherMealCount = table.getPhilosophers().map(Philosopher::getMealCount)
-                        .collect(Collectors.toList());
-                final List<Boolean> philosopherHungry = table.getPhilosophers().map(Philosopher::isHungry)
-                        .collect(Collectors.toList());
-                return new Backup() {
-                    @Override
-                    public String getHost() {
-                        return host;
-                    }
-
-                    @Override
-                    public int getCores() {
-                        return cpuCores;
-                    }
-
-                    @Override
-                    public int getChairCount() {
-                        return chairCount;
-                    }
-
-                    @Override
-                    public int getPhilosopherCount() {
-                        return philosopherNames.size();
-                    }
-
-                    @Override
-                    public String getPhilosopherName(int index) {
-                        return philosopherNames.get(index);
-                    }
-
-                    @Override
-                    public int getPhilosopherMealCount(int index) {
-                        return philosopherMealCount.get(index);
-                    }
-
-                    @Override
-                    public boolean isPhilosopherHungry(int index) {
-                        return philosopherHungry.get(index);
-                    }
-                };
+            public void addChair(Chair chair) {
+                chairList.add(chair);
             }
 
             @Override
-            public void storeBackup(Backup backup) {
-                hostBackupMap.put(backup.getHost(), backup);
+            public void removeChair(Chair chair) {
+                chairList.remove(chair);
             }
 
             @Override
-            public void restoreBackup(String host) {
-                final Backup backup = hostBackupMap.get(host);
-
-                IntStream.rangeClosed(1, backup.getChairCount())
-                        .mapToObj(index -> new Chair.Builder().setNameUniqueId().create())
-                        .forEach(table::addChair);
-
-                IntStream.rangeClosed(0, backup.getPhilosopherCount() - 1)
-                        .mapToObj(index -> new Philosopher.Builder()
-                                .setTable(table)
-                                .name(backup.getPhilosopherName(index))
-                                .setTakenMeals(backup.getPhilosopherMealCount(index))
-                                .setHungry(backup.isPhilosopherHungry(index))
-                                .setFileLogger()
-                                .create())
-                        .forEach(table::addPhilosopher);
+            public Stream<Chair> getChairs() {
+                return chairList.stream();
             }
 
             @Override
-            public void deleteBackup(String host) {
-                hostBackupMap.remove(host);
+            public void addPhilosopher(Philosopher philosopher) {
+                philosopherList.add(philosopher);
+            }
+
+            @Override
+            public void removePhilosopher(Philosopher philosopher) {
+                philosopherList.remove(philosopher);
+            }
+
+            @Override
+            public Stream<Philosopher> getPhilosophers() {
+                return philosopherList.stream();
             }
         };
     }
 
-    /**
-     * Creates a snapshot from this tables and philosophers settings.
-     *
-     * @return the backup.
-     */
-    Backup createBackup();
+    default void addChair(final String name) {
+        addChair(new Chair.Builder().setName(name).create());
+    }
 
-    /**
-     * Safes a backup.
-     *
-     * @param backup to safe.
-     */
-    void storeBackup(final Backup backup);
+    void addChair(final Chair chair);
 
-    /**
-     * Restores a backup from the given host.
-     *
-     * @param host to restore the backup from.
-     */
-    void restoreBackup(final String host);
+    default void removeChair(final String name) {
+        getChairs().parallel()
+                .filter(chair -> chair.toString().equals(name))
+                .findAny()
+                .ifPresent(this::removeChair);
+    }
 
-    /**
-     * Delete a backup from the given host.
-     *
-     * @param host to delete the backup from.
-     */
-    void deleteBackup(final String host);
+    void removeChair(final Chair chair);
+
+    Stream<Chair> getChairs();
+
+    default void addPhilosopher(final String name, final boolean hungry) {
+        addPhilosopher(new Philosopher.Builder().name(name).setHungry(hungry).create());
+    }
+
+    void addPhilosopher(final Philosopher philosopher);
+
+    default void removePhilosopher(final String name) {
+        getPhilosophers().parallel()
+                .filter(philosopher -> philosopher.getName().equals(name))
+                .findAny()
+                .ifPresent(this::removePhilosopher);
+    }
+
+    void removePhilosopher(final Philosopher philosopher);
+
+    Stream<Philosopher> getPhilosophers();
+
+    default void onPhilosopherStandUp(final String name) {
+        getPhilosophers().parallel()
+                .filter(philosopher -> philosopher.getName().equals(name))
+                .findAny()
+                .ifPresent(philosopher -> IntStream.rangeClosed(1, philosopher.getEatIterationCount())
+                        .forEach(index -> philosopher.incrementMealCount()));
+    }
 }

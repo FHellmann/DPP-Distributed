@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 /**
  * Created by fhellman on 18.04.2016.
  */
-public class LocalTablePool extends UnicastRemoteObject implements RmiTable, Table, Observer {
+public class LocalTablePool extends UnicastRemoteObject implements RmiTable, Observer {
     private final List<Table> tables = Collections.synchronizedList(new LinkedList<>());
     private final List<Philosopher> localPhilosophers = Collections.synchronizedList(new ArrayList<>());
     private final Table localTable;
@@ -123,13 +123,21 @@ public class LocalTablePool extends UnicastRemoteObject implements RmiTable, Tab
 
     @Override
     public BackupService getBackupService() {
-        return getLocalTable().getBackupService();
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void update(Observable observable, Object object) {
         final Table table = (Table) object; // This table as been disconnected!
         logger.log("Unreachable table " + table.getName() + " detected...");
+
+        System.out.println("Unreachable table '" + table.getName() + "'");
+        System.out.println("Chair(s):");
+        table.getBackupService().getChairs().forEach(tmp -> System.out.println("\t- " + tmp.toString()));
+        System.out.println("Philosopher(s):");
+        table.getBackupService().getPhilosophers().map(Philosopher::getName).map(name -> "\t- " + name).forEach(System.out::println);
+
+        /*
         tables.remove(table); // Remove the disconnected table
 
         logger.log("Try to restore unreachable table " + table.getName() + "...");
@@ -163,6 +171,7 @@ public class LocalTablePool extends UnicastRemoteObject implements RmiTable, Tab
                 logger.log("Unreachable table " + table.getName() + " will be restored by another one!");
             }
         }
+        */
     }
 
     private Table getLocalTable() {

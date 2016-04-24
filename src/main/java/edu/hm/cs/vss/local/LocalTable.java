@@ -16,7 +16,6 @@ import java.util.stream.Stream;
 public class LocalTable implements Table {
     private final List<Chair> chairs = Collections.synchronizedList(new LinkedList<>());
     private final Logger logger;
-    private final BackupService backupService;
     private TableMaster tableMaster;
 
     public LocalTable() throws IOException {
@@ -25,7 +24,6 @@ public class LocalTable implements Table {
 
     public LocalTable(final Logger logger) {
         this.logger = logger;
-        this.backupService = BackupService.create(this);
     }
 
     @Override
@@ -87,6 +85,6 @@ public class LocalTable implements Table {
 
     @Override
     public BackupService getBackupService() {
-        return backupService;
+        throw new UnsupportedOperationException();
     }
 }
