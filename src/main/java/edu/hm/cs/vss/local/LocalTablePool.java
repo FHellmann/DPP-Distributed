@@ -16,7 +16,7 @@ import java.util.stream.Stream;
 /**
  * Created by fhellman on 18.04.2016.
  */
-public class LocalTablePool extends UnicastRemoteObject implements RmiTable, Observer {
+public class LocalTablePool extends UnicastRemoteObject implements Table, Observer {
     private final List<Table> tables = Collections.synchronizedList(new LinkedList<>());
     private final List<Philosopher> localPhilosophers = Collections.synchronizedList(new ArrayList<>());
     private final Table localTable;
@@ -31,7 +31,7 @@ public class LocalTablePool extends UnicastRemoteObject implements RmiTable, Obs
         this.localTable = new LocalTable(logger);
         this.logger = logger;
         final Registry registry = LocateRegistry.createRegistry(NETWORK_PORT);
-        registry.rebind(Table.class.getSimpleName(), this);
+        registry.rebind(Table.class.getSimpleName(), RmiTable.create(this));
         tables.add(this);
     }
 

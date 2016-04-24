@@ -13,7 +13,7 @@ import java.util.stream.Stream;
 /**
  * Created by Fabio Hellmann on 14.04.2016.
  */
-public class RemoteTable extends Observable implements RmiTable {
+public class RemoteTable extends Observable implements Table {
     private final String host;
     private final Logger logger;
     private final RmiTable table;

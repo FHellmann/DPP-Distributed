@@ -87,6 +87,7 @@ public interface BackupService extends Serializable {
 
     Stream<Philosopher> getPhilosophers();
 
+    // TODO Not yet called!
     default void onPhilosopherStandUp(final String name) {
         getPhilosophers().parallel()
                 .filter(philosopher -> philosopher.getName().equals(name))
