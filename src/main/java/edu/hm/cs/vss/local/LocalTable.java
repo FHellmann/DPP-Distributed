@@ -42,7 +42,7 @@ public class LocalTable implements Table {
     }
 
     @Override
-    public Philosopher addPhilosopher(Philosopher philosopher) {
+    public void addPhilosopher(Philosopher philosopher) {
         throw new UnsupportedOperationException();
     }
 

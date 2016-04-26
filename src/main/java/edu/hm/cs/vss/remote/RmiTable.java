@@ -26,5 +26,5 @@ public interface RmiTable extends Remote {
 
     int getChairCount() throws RemoteException;
 
-    TableMaster getMaster() throws RemoteException;
+    boolean isAllowedToSitDown(final int mealCount) throws RemoteException;
 }

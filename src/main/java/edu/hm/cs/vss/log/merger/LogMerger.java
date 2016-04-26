@@ -41,8 +41,8 @@ public final class LogMerger {
                                 final Date timestamp1 = formatter.parse(o1.substring(0, o1.indexOf(" ")));
                                 final Date timestamp2 = formatter.parse(o2.substring(0, o2.indexOf(" ")));
                                 return timestamp1.compareTo(timestamp2);
-                            } catch (ParseException e) {
-                                throw new RuntimeException(e);
+                            } catch (ParseException ignored) {
+                                return 0;
                             }
                         })
                         .forEach(line -> {

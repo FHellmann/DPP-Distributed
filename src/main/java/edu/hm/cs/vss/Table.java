@@ -53,7 +53,7 @@ public interface Table {
      * @param philosopher
      * @return
      */
-    Philosopher addPhilosopher(final Philosopher philosopher);
+    void addPhilosopher(final Philosopher philosopher);
 
     /**
      *

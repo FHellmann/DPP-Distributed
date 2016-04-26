@@ -38,9 +38,7 @@ public class RemoteTable extends Observable implements Table {
             logger.log("Requesting the remote table " + host + " to add the table " + tableHost);
             table.addTable(tableHost);
         } catch (RemoteException e) {
-            logger.log(e.getMessage());
-            e.printStackTrace();
-            notifyObservers(RemoteTable.this);
+            handleRemoteTableDisconnected(e);
         }
     }
 
@@ -50,9 +48,7 @@ public class RemoteTable extends Observable implements Table {
             logger.log("Requesting the remote table " + host + " to delete the table " + tableHost);
             table.removeTable(tableHost);
         } catch (RemoteException e) {
-            logger.log(e.getMessage());
-            e.printStackTrace();
-            notifyObservers(RemoteTable.this);
+            handleRemoteTableDisconnected(e);
         }
     }
 
@@ -62,13 +58,21 @@ public class RemoteTable extends Observable implements Table {
     }
 
     @Override
-    public Philosopher addPhilosopher(Philosopher philosopher) {
-        throw new UnsupportedOperationException();
+    public void addPhilosopher(Philosopher philosopher) {
+        try {
+            table.addPhilosopher(getName(), philosopher.getName(), philosopher.isHungry());
+        } catch (RemoteException e) {
+            handleRemoteTableDisconnected(e);
+        }
     }
 
     @Override
     public void removePhilosopher(Philosopher philosopher) {
-        throw new UnsupportedOperationException();
+        try {
+            table.removePhilosopher(getName(), philosopher.getName());
+        } catch (RemoteException e) {
+            handleRemoteTableDisconnected(e);
+        }
     }
 
     @Override
@@ -78,33 +82,38 @@ public class RemoteTable extends Observable implements Table {
 
     @Override
     public void addChair(Chair chair) {
-        throw new UnsupportedOperationException();
+        try {
+            table.addChair(getName(), chair.toString());
+        } catch (RemoteException e) {
+            handleRemoteTableDisconnected(e);
+        }
     }
 
     @Override
     public void removeChair(Chair chair) {
-        throw new UnsupportedOperationException();
+        try {
+            table.removeChair(getName(), chair.toString());
+        } catch (RemoteException e) {
+            handleRemoteTableDisconnected(e);
+        }
     }
 
     @Override
     public Stream<Chair> getChairs() {
         try {
-            logger.log("Requesting chairs from remote table " + host);
+            //logger.log("Requesting chairs from remote table " + host);
             return IntStream.rangeClosed(0, table.getChairCount() - 1)
                     .mapToObj(index -> {
                         try {
                             return table.getChair(index);
                         } catch (RemoteException e) {
-                            e.printStackTrace();
-                            notifyObservers(RemoteTable.this);
+                            handleRemoteTableDisconnected(e);
                         }
                         return null;
                     })
                     .filter(chair -> chair != null);
         } catch (RemoteException e) {
-            logger.log(e.getMessage());
-            e.printStackTrace();
-            notifyObservers(RemoteTable.this);
+            handleRemoteTableDisconnected(e);
         }
         return Stream.empty();
     }
@@ -116,15 +125,15 @@ public class RemoteTable extends Observable implements Table {
 
     @Override
     public TableMaster getTableMaster() {
-        logger.log("Requesting the remote table " + host + " to check if the philosopher is allowed to take a seat");
-        try {
-            return table.getMaster();
-        } catch (RemoteException e) {
-            logger.log(e.getMessage());
-            e.printStackTrace();
-            notifyObservers(RemoteTable.this);
-        }
-        return (TableMaster) philosopher -> true;
+        //logger.log("Requesting the remote table " + host + " to check if the philosopher is allowed to take a seat");
+        return mealCount -> {
+            try {
+                return table.isAllowedToSitDown(mealCount);
+            } catch (RemoteException e) {
+                handleRemoteTableDisconnected(e);
+            }
+            return true;
+        };
     }
 
     @Override
@@ -135,5 +144,12 @@ public class RemoteTable extends Observable implements Table {
     @Override
     public void setTableMaster(TableMaster tableMaster) {
         throw new UnsupportedOperationException();
+    }
+
+    private void handleRemoteTableDisconnected(final RemoteException e) {
+        //logger.log(e.getMessage());
+        // e.printStackTrace();
+        setChanged();
+        notifyObservers(RemoteTable.this);
     }
 }

@@ -75,9 +75,17 @@ public class Main {
                 case "Backup": {
                     System.out.println("######################## STATUS ########################");
                     System.out.println("Table(s):");
-                    table.getTables().peek(tmp -> System.out.println("\t- " + tmp.getName())).forEach(tmp -> tmp.getChairs().map(Object::toString).map(name -> "\t\t+ " + name).forEach(System.out::println));
+                    table.getTables()
+                            .peek(tmp -> System.out.println("\t- " + tmp.getName()))
+                            .forEach(tmp -> tmp.getChairs()
+                                    .map(Object::toString)
+                                    .map(name -> "\t\t+ " + name)
+                                    .forEach(System.out::println));
                     System.out.println("Local Philosopher(s):");
-                    table.getPhilosophers().map(Thread::getName).map(name -> "\t- " + name).forEach(System.out::println);
+                    table.getPhilosophers()
+                            .map(Thread::getName)
+                            .map(name -> "\t- " + name)
+                            .forEach(System.out::println);
                     System.out.println("######################### ENDE #########################");
                 }
                 break;
@@ -109,16 +117,20 @@ public class Main {
                         System.out.println("Added " + count + " Chair(s)!");
                     } else {
                         count *= -1;
-                        if (count > table.getChairs().count()) {
-                            count = (int) (table.getChairs().count() - 1);
+                        final long amountOfChairs = table.getTables().limit(1).flatMap(Table::getChairs).count();
+                        if (count > amountOfChairs) {
+                            count = (int) amountOfChairs;
                         }
 
                         System.out.println("Removing " + count + " Chair(s)...");
 
-                        table.getChairs()
-                                .limit(count - 1)
+                        table.getTables()
+                                .limit(1)
+                                .flatMap(Table::getChairs)
                                 .collect(Collectors.toList())
-                                .stream().forEach(table::removeChair);
+                                .stream()
+                                .limit(count)
+                                .forEach(table::removeChair);
 
                         System.out.println("Removed " + count + " Chair(s)!");
                     }
