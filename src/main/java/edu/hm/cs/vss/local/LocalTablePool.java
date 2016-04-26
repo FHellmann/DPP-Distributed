@@ -5,19 +5,20 @@ import edu.hm.cs.vss.log.DummyLogger;
 import edu.hm.cs.vss.log.Logger;
 import edu.hm.cs.vss.remote.RemoteTable;
 import edu.hm.cs.vss.remote.RmiTable;
-import edu.hm.cs.vss.remote.RmiTableHandler;
 
 import java.io.IOException;
+import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * Created by fhellman on 18.04.2016.
  */
-public class LocalTablePool extends UnicastRemoteObject implements Table, Observer {
+public class LocalTablePool extends UnicastRemoteObject implements RmiTable, Table, Observer {
     private final List<Table> tables = Collections.synchronizedList(new LinkedList<>());
     private final List<Philosopher> localPhilosophers = Collections.synchronizedList(new ArrayList<>());
     private final Table localTable;
@@ -32,7 +33,7 @@ public class LocalTablePool extends UnicastRemoteObject implements Table, Observ
         this.localTable = new LocalTable(logger);
         this.logger = logger;
         final Registry registry = LocateRegistry.createRegistry(NETWORK_PORT);
-        registry.rebind(Table.class.getSimpleName(), new RmiTableHandler(this));
+        registry.rebind(Table.class.getSimpleName(), this);
         tables.add(this);
     }
 
@@ -81,6 +82,13 @@ public class LocalTablePool extends UnicastRemoteObject implements Table, Observ
     public Philosopher addPhilosopher(final Philosopher philosopher) {
         localPhilosophers.add(philosopher);
         philosopher.start();
+
+        // Inform other tables
+        try {
+            addPhilosopher(getName(), philosopher.getName(), philosopher.isHungry());
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
         return philosopher;
     }
 
@@ -88,6 +96,13 @@ public class LocalTablePool extends UnicastRemoteObject implements Table, Observ
     public void removePhilosopher(Philosopher philosopher) {
         philosopher.interrupt();
         localPhilosophers.remove(philosopher);
+
+        // Inform other tables
+        try {
+            removePhilosopher(getName(), philosopher.getName());
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -98,11 +113,25 @@ public class LocalTablePool extends UnicastRemoteObject implements Table, Observ
     @Override
     public void addChair(Chair chair) {
         getLocalTable().addChair(chair);
+
+        // Inform other tables
+        try {
+            addChair(getName(), chair.toString());
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     public void removeChair(Chair chair) {
         getLocalTable().removeChair(chair);
+
+        // Inform other tables
+        try {
+            removeChair(getName(), chair.toString());
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -125,6 +154,58 @@ public class LocalTablePool extends UnicastRemoteObject implements Table, Observ
     @Override
     public BackupService getBackupService() {
         throw new UnsupportedOperationException();
+    }
+
+    public void addTable(final String host) throws RemoteException {
+        connectToTable(host);
+    }
+
+    public void removeTable(final String host) throws RemoteException {
+        disconnectFromTable(host);
+    }
+
+    public void addPhilosopher(final String host, final String name, final boolean hungry) throws RemoteException {
+        getTables().parallel()
+                .skip(1)
+                .filter(table -> table.getName().equals(host))
+                .findAny()
+                .ifPresent(table -> table.getBackupService().addPhilosopher(name, hungry));
+    }
+
+    public void removePhilosopher(final String host, final String name) throws RemoteException {
+        getTables().parallel()
+                .skip(1)
+                .filter(table -> table.getName().equals(host))
+                .findAny()
+                .ifPresent(table -> table.getBackupService().removePhilosopher(name));
+    }
+
+    public void addChair(final String host, final String name) throws RemoteException {
+        getTables().parallel()
+                .skip(1)
+                .filter(table -> table.getName().equals(host))
+                .findAny()
+                .ifPresent(table -> table.getBackupService().addChair(name));
+    }
+
+    public void removeChair(final String host, final String name) throws RemoteException {
+        getTables().parallel()
+                .skip(1)
+                .filter(table -> table.getName().equals(host))
+                .findAny()
+                .ifPresent(table -> table.getBackupService().removeChair(name));
+    }
+
+    public Chair getChair(final int index) throws RemoteException {
+        return getChairs().collect(Collectors.toList()).get(index);
+    }
+
+    public int getChairCount() throws RemoteException {
+        return (int) getChairs().count();
+    }
+
+    public TableMaster getMaster() throws RemoteException {
+        return getTableMaster();
     }
 
     @Override

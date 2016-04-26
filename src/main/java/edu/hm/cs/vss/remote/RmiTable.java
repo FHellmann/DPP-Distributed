@@ -1,12 +1,10 @@
 package edu.hm.cs.vss.remote;
 
-import edu.hm.cs.vss.*;
-import edu.hm.cs.vss.local.LocalTablePool;
+import edu.hm.cs.vss.Chair;
+import edu.hm.cs.vss.TableMaster;
 
 import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Created by Fabio on 16.04.2016.
