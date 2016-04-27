@@ -117,19 +117,10 @@ public abstract class Philosopher extends Thread {
             if (getTable().getTables().map(Table::getTableMaster).allMatch(tableMaster -> tableMaster.isAllowedToTakeSeat(getMealCount()))) {
                 unbanned();
 
-                // Calculate minimal queue size to get a chair
-                final int minQueueSize = getTable().getTables()
-                        .flatMap(Table::getChairs)
-                        .parallel()
-                        .mapToInt(Chair::getWaitingPhilosopherCount)
-                        .min()
-                        .orElse(0);
-
                 // searching for the chair with a minimal queue size
                 chairOptional = getTable().getTables()
                         .flatMap(Table::getChairs)
-                        .filter(chair -> minQueueSize >= chair.getWaitingPhilosopherCount())
-                        .findFirst();
+                        .min((chair1, chair2) -> Integer.compare(chair1.getWaitingPhilosopherCount(), chair2.getWaitingPhilosopherCount()));
 
                 if (chairOptional.isPresent()) {
                     try {
