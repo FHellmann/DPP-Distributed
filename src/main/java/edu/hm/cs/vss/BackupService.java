@@ -71,7 +71,7 @@ public interface BackupService extends Serializable {
     Stream<Chair> getChairs();
 
     default void addPhilosopher(final String name, final boolean hungry) {
-        addPhilosopher(new Philosopher.Builder().name(name).setHungry(hungry).create());
+        addPhilosopher(new Philosopher.Builder().name(name).setHungry(hungry).setFileLogger().create());
     }
 
     void addPhilosopher(final Philosopher philosopher);
@@ -88,11 +88,9 @@ public interface BackupService extends Serializable {
     Stream<Philosopher> getPhilosophers();
 
     default void onPhilosopherStandUp(final String name) {
-        // TODO Not yet called!
         getPhilosophers().parallel()
                 .filter(philosopher -> philosopher.getName().equals(name))
                 .findAny()
-                .ifPresent(philosopher -> IntStream.rangeClosed(1, philosopher.getEatIterationCount())
-                        .forEach(index -> philosopher.incrementMealCount()));
+                .ifPresent(Philosopher::incrementMealCount);
     }
 }

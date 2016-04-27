@@ -104,9 +104,9 @@ public abstract class Philosopher extends Thread {
 
     public abstract Stream<Fork> getForks();
 
-    public abstract void setOnStandUpListener(final OnStandUpListener listener);
+    public abstract void addOnStandUpListener(final OnStandUpListener listener);
 
-    public abstract Optional<OnStandUpListener> getOnStandUpListener();
+    public abstract Stream<OnStandUpListener> getOnStandUpListener();
 
     public Chair waitForSitDown() {
         say("Waiting for a nice seat...");
@@ -218,7 +218,7 @@ public abstract class Philosopher extends Thread {
      */
     private void eat() throws InterruptedException {
         incrementMealCount();
-        getOnStandUpListener().ifPresent(listener -> listener.onStandUp(this));
+        getOnStandUpListener().forEach(listener -> listener.onStandUp(this));
         say("Eating for " + getTimeToEat() + " ms");
         onThreadSleep(getTimeToEat());
     }

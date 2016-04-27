@@ -6,6 +6,8 @@ import java.io.Serializable;
  * The Table Master sits at every table. He decides whether a philosopher is allowed to take a seat or not.
  */
 public interface TableMaster {
+    int MAX_DEVIATION = 10;
+
     /**
      * Notify the table master that a new philosopher come to his table.
      *

@@ -26,7 +26,7 @@ public class LocalPhilosopher extends Philosopher {
     private int eatIterations;
     private int mealCount;
     private long bannedTime = -1;
-    private OnStandUpListener onStandUpListener;
+    private List<OnStandUpListener> onStandUpListeners = new ArrayList<>();
 
     public LocalPhilosopher(final String name,
                             final Logger logger,
@@ -125,12 +125,12 @@ public class LocalPhilosopher extends Philosopher {
     }
 
     @Override
-    public void setOnStandUpListener(OnStandUpListener listener) {
-        onStandUpListener = listener;
+    public void addOnStandUpListener(OnStandUpListener listener) {
+        onStandUpListeners.add(listener);
     }
 
     @Override
-    public Optional<OnStandUpListener> getOnStandUpListener() {
-        return Optional.ofNullable(onStandUpListener);
+    public Stream<OnStandUpListener> getOnStandUpListener() {
+        return onStandUpListeners.stream();
     }
 }

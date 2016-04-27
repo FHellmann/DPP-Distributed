@@ -18,6 +18,8 @@ public interface RmiTable extends Remote {
 
     void removePhilosopher(final String host, final String name) throws RemoteException;
 
+    void onStandUp(final String host, final String philosopherName) throws RemoteException;
+
     void addChair(final String host, final String name) throws RemoteException;
 
     void removeChair(final String host, final String name) throws RemoteException;
@@ -25,6 +27,4 @@ public interface RmiTable extends Remote {
     Chair getChair(final int index) throws RemoteException;
 
     int getChairCount() throws RemoteException;
-
-    boolean isAllowedToSitDown(final int mealCount) throws RemoteException;
 }

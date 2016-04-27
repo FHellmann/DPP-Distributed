@@ -97,6 +97,10 @@ public class LocalTablePool implements RmiTable, Table, Observer {
     public void addPhilosopher(final Philosopher philosopher) {
         localPhilosophers.add(philosopher);
         philosopher.start();
+        philosopher.addOnStandUpListener(tmp -> getTables().parallel()
+                .skip(1)
+                .map(table -> (Philosopher.OnStandUpListener) table)
+                .forEach(listener -> listener.onStandUp(philosopher)));
 
         // Inform other tables
         getTables().parallel()
@@ -184,6 +188,15 @@ public class LocalTablePool implements RmiTable, Table, Observer {
                 .ifPresent(table -> table.getBackupService().removePhilosopher(name));
     }
 
+    @Override
+    public void onStandUp(String host, String philosopherName) throws RemoteException {
+        getTables().parallel()
+                .skip(1)
+                .filter(table -> table.getName().equals(host))
+                .findAny()
+                .ifPresent(table -> table.getBackupService().onPhilosopherStandUp(philosopherName));
+    }
+
     public void addChair(final String host, final String name) throws RemoteException {
         getTables().parallel()
                 .skip(1)
@@ -206,11 +219,6 @@ public class LocalTablePool implements RmiTable, Table, Observer {
 
     public int getChairCount() throws RemoteException {
         return (int) getLocalTable().getChairs().count();
-    }
-
-    @Override
-    public boolean isAllowedToSitDown(int mealCount) throws RemoteException {
-        return getLocalTable().getTableMaster().isAllowedToTakeSeat(mealCount);
     }
 
     @Override

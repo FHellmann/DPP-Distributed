@@ -1,6 +1,7 @@
 package edu.hm.cs.vss.remote;
 
 import edu.hm.cs.vss.*;
+import edu.hm.cs.vss.local.LocalTableMaster;
 import edu.hm.cs.vss.log.Logger;
 
 import java.rmi.RemoteException;
@@ -13,7 +14,7 @@ import java.util.stream.Stream;
 /**
  * Created by Fabio Hellmann on 14.04.2016.
  */
-public class RemoteTable extends Observable implements Table {
+public class RemoteTable extends Observable implements Table, Philosopher.OnStandUpListener {
     private final String host;
     private final Logger logger;
     private final RmiTable table;
@@ -125,15 +126,8 @@ public class RemoteTable extends Observable implements Table {
 
     @Override
     public TableMaster getTableMaster() {
-        //logger.log("Requesting the remote table " + host + " to check if the philosopher is allowed to take a seat");
-        return mealCount -> {
-            try {
-                return table.isAllowedToSitDown(mealCount);
-            } catch (RemoteException e) {
-                handleRemoteTableDisconnected(e);
-            }
-            return true;
-        };
+        return mealCount -> mealCount <= getBackupService().getPhilosophers()
+                .mapToInt(Philosopher::getMealCount).min().orElse(0) + TableMaster.MAX_DEVIATION;
     }
 
     @Override
@@ -144,6 +138,15 @@ public class RemoteTable extends Observable implements Table {
     @Override
     public void setTableMaster(TableMaster tableMaster) {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void onStandUp(Philosopher philosopher) {
+        try {
+            table.onStandUp(getName(), philosopher.getName());
+        } catch (RemoteException e) {
+            handleRemoteTableDisconnected(e);
+        }
     }
 
     private void handleRemoteTableDisconnected(final RemoteException e) {

@@ -12,20 +12,18 @@ import java.util.concurrent.atomic.AtomicInteger;
  * This Table Master makes the decision due to the amount of meals the philosopher has already eaten.
  */
 public class LocalTableMaster implements TableMaster, Philosopher.OnStandUpListener {
-    private static final int MAX_DEVIATION = 10;
     private final List<Philosopher> philosopherList = Collections.synchronizedList(new ArrayList<>());
     private final AtomicInteger maxMealCount = new AtomicInteger(MAX_DEVIATION);
 
     @Override
     public void register(Philosopher philosopher) {
         philosopherList.add(philosopher);
-        philosopher.setOnStandUpListener(this);
+        philosopher.addOnStandUpListener(this);
     }
 
     @Override
     public void unregister(Philosopher philosopher) {
         philosopherList.remove(philosopher);
-        philosopher.setOnStandUpListener(null);
     }
 
     @Override
