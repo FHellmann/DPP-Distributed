@@ -22,6 +22,7 @@ public class LocalTablePool implements RmiTable, Table, Observer {
     private final List<Table> tables = Collections.synchronizedList(new LinkedList<>());
     private final List<Philosopher> localPhilosophers = Collections.synchronizedList(new ArrayList<>());
     private final Table localTable;
+    private final TableMaster tableMaster;
     private final Logger logger;
 
     public LocalTablePool() throws IOException {
@@ -30,6 +31,7 @@ public class LocalTablePool implements RmiTable, Table, Observer {
 
     public LocalTablePool(final Logger logger) throws IOException {
         this.localTable = new LocalTable(logger);
+        this.tableMaster = new DistributedTableMaster();
         this.logger = logger;
 
         final Registry registry = LocateRegistry.createRegistry(NETWORK_PORT);
@@ -145,9 +147,7 @@ public class LocalTablePool implements RmiTable, Table, Observer {
 
     @Override
     public TableMaster getTableMaster() {
-        return mealCount -> getLocalTable().getTableMaster().isAllowedToTakeSeat(mealCount) &&
-                getTables().skip(1).map(Table::getTableMaster)
-                        .allMatch(tableMaster -> tableMaster.isAllowedToTakeSeat(mealCount));
+        return tableMaster;
     }
 
     @Override
@@ -264,5 +264,22 @@ public class LocalTablePool implements RmiTable, Table, Observer {
 
     private Table getLocalTable() {
         return localTable;
+    }
+
+    private final class DistributedTableMaster extends LocalTableMaster {
+        @Override
+        public void register(Philosopher philosopher) {
+            getLocalTable().getTableMaster().register(philosopher);
+        }
+
+        @Override
+        public void unregister(Philosopher philosopher) {
+            getLocalTable().getTableMaster().unregister(philosopher);
+        }
+
+        @Override
+        public boolean isAllowedToTakeSeat(Integer mealCount) {
+            return getTables().map(Table::getTableMaster).allMatch(master -> master.isAllowedToTakeSeat(mealCount));
+        }
     }
 }

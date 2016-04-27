@@ -40,7 +40,7 @@ public class LocalPhilosopher extends Philosopher {
         this.table = table;
         this.timeSleep = timeSleep;
         this.timeEat = timeEat;
-        this.timeMediate = timeMediate;
+        this.timeMediate = veryHungry ? timeMediate / 2 : timeMediate;
         this.veryHungry = veryHungry;
         this.eatIterations = veryHungry ? DEFAULT_EAT_ITERATIONS * 2 : DEFAULT_EAT_ITERATIONS;
     }

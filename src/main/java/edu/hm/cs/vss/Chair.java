@@ -74,10 +74,12 @@ public interface Chair extends Serializable {
 
                 @Override
                 public Optional<Chair> blockIfAvailable() throws InterruptedException {
-                    if (semaphore.tryAcquire(1, TimeUnit.MINUTES) && block.compareAndSet(false, true)) {
+                    final boolean acquire = semaphore.tryAcquire(1, TimeUnit.MINUTES);
+                    if (acquire && block.compareAndSet(false, true)) {
                         return Optional.of(this);
+                    } else if(acquire) {
+                        semaphore.release();
                     }
-                    semaphore.release();
                     return Optional.empty();
                 }
 
