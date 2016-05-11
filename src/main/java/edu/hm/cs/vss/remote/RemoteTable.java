@@ -3,6 +3,8 @@ package edu.hm.cs.vss.remote;
 import edu.hm.cs.vss.*;
 import edu.hm.cs.vss.log.Logger;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -59,7 +61,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
     @Override
     public void addPhilosopher(Philosopher philosopher) {
         try {
-            table.addPhilosopher(getName(), philosopher.getName(), philosopher.isHungry());
+            table.addPhilosopher(getLocalHost(), philosopher.getName(), philosopher.isHungry());
         } catch (RemoteException e) {
             handleRemoteTableDisconnected(e);
         }
@@ -68,7 +70,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
     @Override
     public void removePhilosopher(Philosopher philosopher) {
         try {
-            table.removePhilosopher(getName(), philosopher.getName());
+            table.removePhilosopher(getLocalHost(), philosopher.getName());
         } catch (RemoteException e) {
             handleRemoteTableDisconnected(e);
         }
@@ -82,7 +84,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
     @Override
     public void addChair(Chair chair) {
         try {
-            table.addChair(getName(), chair.toString());
+            table.addChair(getLocalHost(), chair.toString());
         } catch (RemoteException e) {
             handleRemoteTableDisconnected(e);
         }
@@ -91,7 +93,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
     @Override
     public void removeChair(Chair chair) {
         try {
-            table.removeChair(getName(), chair.toString());
+            table.removeChair(getLocalHost(), chair.toString());
         } catch (RemoteException e) {
             handleRemoteTableDisconnected(e);
         }
@@ -126,7 +128,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
     @Override
     public void onStandUp(Philosopher philosopher) {
         try {
-            table.onStandUp(getName(), philosopher.getName());
+            table.onStandUp(getLocalHost(), philosopher.getName());
         } catch (RemoteException e) {
             handleRemoteTableDisconnected(e);
         }
@@ -141,5 +143,14 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
         // e.printStackTrace();
         setChanged();
         notifyObservers(RemoteTable.this);
+    }
+
+    private String getLocalHost() {
+        try {
+            return InetAddress.getLocalHost().getHostAddress();
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+            return "127.0.0.1"; // TODO This is a potential bug if the host can not be detected automaticly
+        }
     }
 }
