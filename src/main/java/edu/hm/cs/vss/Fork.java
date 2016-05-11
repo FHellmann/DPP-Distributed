@@ -11,11 +11,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public interface Fork extends Serializable {
 
     /**
-     * @return <code>true</code> if the fork is available.
-     */
-    boolean isAvailable();
-
-    /**
      * Blocks this fork immediately if it is available.
      *
      * @return the fork or <code>null</code> if the fork wasn't available.
@@ -28,8 +23,6 @@ public interface Fork extends Serializable {
     void unblock();
 
     class Builder implements Serializable {
-        private static int counter = 1;
-        private String nameSuffix = Integer.toString(counter++);
         private Chair chair;
 
         public Builder withChair(final Chair chair) {
@@ -37,24 +30,13 @@ public interface Fork extends Serializable {
             return this;
         }
 
-        public Builder setNameUniqueId() {
-            nameSuffix = UUID.randomUUID().toString();
-            return this;
-        }
-
         public Fork create() {
             return new Fork() {
-                private final String name = "Fork-" + nameSuffix;
                 private final AtomicBoolean block = new AtomicBoolean(false);
 
                 @Override
                 public String toString() {
-                    return name + " from " + chair.toString();
-                }
-
-                @Override
-                public boolean isAvailable() {
-                    return !block.get();
+                    return "fork from " + chair.toString();
                 }
 
                 @Override

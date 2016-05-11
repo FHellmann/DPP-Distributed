@@ -222,6 +222,57 @@ public class LocalTablePool implements RmiTable, Table, Observer {
     }
 
     @Override
+    public boolean blockChairIfAvailable(String name) throws RemoteException {
+        return getLocalTable().getChairs().parallel()
+                .filter(chair -> chair.toString().equals(name))
+                .findAny()
+                .flatMap(chair -> {
+                    try {
+                        return chair.blockIfAvailable();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
+                .isPresent();
+    }
+
+    @Override
+    public void unblockChair(String name) throws RemoteException {
+        getLocalTable().getChairs().parallel()
+                .filter(chair -> chair.toString().equals(name))
+                .findAny()
+                .ifPresent(Chair::unblock);
+    }
+
+    @Override
+    public boolean blockForkIfAvailable(String name) throws RemoteException {
+        return getLocalTable().getChairs().parallel()
+                .map(Chair::getFork)
+                .filter(fork -> fork.toString().equals(name))
+                .findAny()
+                .flatMap(Fork::blockIfAvailable)
+                .isPresent();
+    }
+
+    @Override
+    public void unblockFork(String name) throws RemoteException {
+        getLocalTable().getChairs().parallel()
+                .map(Chair::getFork)
+                .filter(fork -> fork.toString().equals(name))
+                .findAny()
+                .ifPresent(Fork::unblock);
+    }
+
+    @Override
+    public int getChairWaitingPhilosophers(String name) throws RemoteException {
+        return getLocalTable().getChairs().parallel()
+                .filter(chair -> chair.toString().equals(name))
+                .findAny()
+                .map(Chair::getWaitingPhilosopherCount)
+                .orElse(0);
+    }
+
+    @Override
     public void update(Observable observable, Object object) {
         final Table table = (Table) object; // This table as been disconnected!
         final BackupService tableBackupService = table.getBackupService();

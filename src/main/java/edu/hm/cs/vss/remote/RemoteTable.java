@@ -1,14 +1,12 @@
 package edu.hm.cs.vss.remote;
 
 import edu.hm.cs.vss.*;
-import edu.hm.cs.vss.local.LocalTableMaster;
 import edu.hm.cs.vss.log.Logger;
 
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Observable;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -23,7 +21,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
     public RemoteTable(final String host, Logger logger) throws Exception {
         this.host = host;
         this.logger = logger;
-        this.backupService = BackupService.create();
+        this.backupService = BackupService.create(this);
         final Registry registry = LocateRegistry.getRegistry(host, NETWORK_PORT);
         table = (RmiTable) registry.lookup(Table.class.getSimpleName());
     }
@@ -101,22 +99,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
 
     @Override
     public Stream<Chair> getChairs() {
-        try {
-            //logger.log("Requesting chairs from remote table " + host);
-            return IntStream.rangeClosed(0, table.getChairCount() - 1)
-                    .mapToObj(index -> {
-                        try {
-                            return table.getChair(index);
-                        } catch (RemoteException e) {
-                            handleRemoteTableDisconnected(e);
-                        }
-                        return null;
-                    })
-                    .filter(chair -> chair != null);
-        } catch (RemoteException e) {
-            handleRemoteTableDisconnected(e);
-        }
-        return Stream.empty();
+        return backupService.getChairs();
     }
 
     @Override
@@ -149,7 +132,11 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
         }
     }
 
-    private void handleRemoteTableDisconnected(final RemoteException e) {
+    protected RmiTable getRmi() {
+        return table;
+    }
+
+    protected void handleRemoteTableDisconnected(final RemoteException e) {
         //logger.log(e.getMessage());
         // e.printStackTrace();
         setChanged();

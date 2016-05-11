@@ -1,5 +1,8 @@
 package edu.hm.cs.vss;
 
+import edu.hm.cs.vss.remote.RemoteChair;
+import edu.hm.cs.vss.remote.RemoteTable;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,14 +19,14 @@ public interface BackupService extends Serializable {
      *
      * @return the backup service.
      */
-    static BackupService create() {
+    static BackupService create(final RemoteTable table) {
         return new BackupService() {
             private final List<Chair> chairList = Collections.synchronizedList(new ArrayList<>());
             private final List<Philosopher> philosopherList = Collections.synchronizedList(new ArrayList<>());
 
             @Override
             public void addChair(Chair chair) {
-                chairList.add(chair);
+                chairList.add(new RemoteChair(chair, table));
             }
 
             @Override
