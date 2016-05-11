@@ -235,10 +235,12 @@ public class LocalTablePool implements RmiTable, Table, Observer {
         tables.remove(table); // Remove the disconnected table
 
         // TODO Algorithm is missing to decide which table should restore the backup...
+        /*
         logger.log("Try to restore unreachable table " + table.getName() + "...");
         tableBackupService.getChairs().forEach(this::addChair);
         tableBackupService.getPhilosophers().forEach(this::addPhilosopher);
         logger.log("Restored unreachable table " + table.getName() + "!");
+         */
 
         /*
         if (tables.size() == 1) {
