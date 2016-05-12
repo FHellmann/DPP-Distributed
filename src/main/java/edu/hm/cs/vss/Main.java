@@ -18,32 +18,7 @@ import java.util.stream.IntStream;
  */
 public class Main {
     public static void main(String[] args) throws IOException {
-        System.out.println("java -jar Program <runtime> <philosophers> <chairs> <ishungry>");
-
-        final long runtime; // Duration of the program activity
-        final int philosopherCount; // Amount of philosophers
-        final int chairCount; // Amount of chairs
-        final boolean veryHungry; // Is the first philosopher very hungry?
-        if (args.length == 4) {
-            // Manual user input
-            int index = 0;
-            runtime = TimeUnit.MILLISECONDS.convert(Long.parseLong(args[index++]), TimeUnit.SECONDS);
-            philosopherCount = Integer.parseInt(args[index++]);
-            chairCount = Integer.parseInt(args[index++]);
-            veryHungry = Boolean.parseBoolean(args[index]);
-        } else {
-            // Defaults
-            runtime = TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
-            philosopherCount = 5;
-            chairCount = 5;
-            veryHungry = false;
-        }
-
-        System.out.println("java -jar Program <runtime=" + runtime + "> <philosophers=" + philosopherCount +
-                "> <chairs=" + chairCount + "> <ishungry=" + veryHungry + ">");
-
         final Table table = new Table.Builder()
-                .withChairCount(chairCount)
                 .withTableMaster(new LocalTableMaster())
                 .setFileLogger()
                 .createNetwork();
