@@ -340,7 +340,10 @@ public class LocalTablePool implements RmiTable, Table, Observer {
 
         @Override
         public boolean isAllowedToTakeSeat(Integer mealCount) {
-            return getTables().map(Table::getTableMaster).allMatch(master -> master.isAllowedToTakeSeat(mealCount));
+            return getTables()
+                    .filter(table -> table.getPhilosophers().count() > 0)
+                    .map(Table::getTableMaster)
+                    .allMatch(master -> master.isAllowedToTakeSeat(mealCount));
         }
     }
 }

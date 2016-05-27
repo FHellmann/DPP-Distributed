@@ -78,7 +78,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
 
     @Override
     public Stream<Philosopher> getPhilosophers() {
-        throw new UnsupportedOperationException();
+        return getBackupService().getPhilosophers();
     }
 
     @Override
