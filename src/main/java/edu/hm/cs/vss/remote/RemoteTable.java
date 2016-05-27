@@ -61,7 +61,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
     @Override
     public void addPhilosopher(Philosopher philosopher) {
         try {
-            table.addPhilosopher(getLocalHost(), philosopher.getName(), philosopher.isHungry());
+            table.addPhilosopher(getLocalHost(), philosopher.getName(), philosopher.isHungry(), philosopher.getMealCount());
         } catch (RemoteException e) {
             handleRemoteTableDisconnected(e);
         }
