@@ -24,6 +24,7 @@ public class LocalTableMaster implements TableMaster, Philosopher.OnStandUpListe
     @Override
     public void unregister(Philosopher philosopher) {
         philosopherList.remove(philosopher);
+        philosopher.removeOnStandUpListener(this);
     }
 
     @Override

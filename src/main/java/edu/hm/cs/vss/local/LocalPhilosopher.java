@@ -23,10 +23,10 @@ public class LocalPhilosopher extends Philosopher {
     private final long timeMediate;
     private final boolean veryHungry;
     private List<Fork> forks = new ArrayList<>();
-    private int eatIterations;
+    private final int eatIterations;
     private int mealCount;
     private long bannedTime = -1;
-    private List<OnStandUpListener> onStandUpListeners = new ArrayList<>();
+    private final List<OnStandUpListener> onStandUpListeners = new ArrayList<>();
 
     public LocalPhilosopher(final String name,
                             final Logger logger,
@@ -127,6 +127,11 @@ public class LocalPhilosopher extends Philosopher {
     @Override
     public void addOnStandUpListener(OnStandUpListener listener) {
         onStandUpListeners.add(listener);
+    }
+
+    @Override
+    public void removeOnStandUpListener(OnStandUpListener listener) {
+        onStandUpListeners.remove(listener);
     }
 
     @Override

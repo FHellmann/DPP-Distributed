@@ -134,11 +134,11 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
         }
     }
 
-    protected RmiTable getRmi() {
+    RmiTable getRmi() {
         return table;
     }
 
-    protected void handleRemoteTableDisconnected(final RemoteException e) {
+    void handleRemoteTableDisconnected(final RemoteException e) {
         //logger.log(e.getMessage());
         // e.printStackTrace();
         setChanged();

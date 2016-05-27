@@ -34,14 +34,14 @@ public abstract class Philosopher extends Thread {
      *
      * @return the logger.
      */
-    public abstract Logger getLogger();
+    protected abstract Logger getLogger();
 
     /**
      * Get the table where the philosopher can get something to eat.
      *
      * @return the table.
      */
-    public abstract Table getTable();
+    protected abstract Table getTable();
 
     /**
      * Get the amount of eaten meals.
@@ -60,55 +60,57 @@ public abstract class Philosopher extends Thread {
      *
      * @return the iteration count.
      */
-    public abstract int getEatIterationCount();
+    protected abstract int getEatIterationCount();
 
     /**
      * Refuse the philosopher a seat at the table.
      */
-    public abstract void banned();
+    protected abstract void banned();
 
     /**
      * Allow the philosopher to sit down at the table.
      */
-    public abstract void unbanned();
+    protected abstract void unbanned();
 
     /**
      * Get the time the philosopher is no longer allowed to sit at the table.
      *
      * @return the time.
      */
-    public abstract Optional<Long> getBannedTime();
+    protected abstract Optional<Long> getBannedTime();
 
     /**
      * Get the time to sleep. (in Milliseconds)
      *
      * @return the time to sleep.
      */
-    public abstract long getTimeToSleep();
+    protected abstract long getTimeToSleep();
 
     /**
      * Get the time to eat. (in Milliseconds)
      *
      * @return the time to eat.
      */
-    public abstract long getTimeToEat();
+    protected abstract long getTimeToEat();
 
     /**
      * Get the time to mediate. (in Milliseconds)
      *
      * @return the time to mediate.
      */
-    public abstract long getTimeToMediate();
+    protected abstract long getTimeToMediate();
 
     public abstract boolean isHungry();
 
-    public abstract Stream<Fork> getForks();
+    protected abstract Stream<Fork> getForks();
 
     public abstract void addOnStandUpListener(final OnStandUpListener listener);
 
-    public abstract Stream<OnStandUpListener> getOnStandUpListener();
+    public abstract void removeOnStandUpListener(final OnStandUpListener listener);
 
-    public Chair waitForSitDown() {
+    protected abstract Stream<OnStandUpListener> getOnStandUpListener();
+
+    private Chair waitForSitDown() {
         say("Waiting for a nice seat...");
 
         Optional<Chair> chairOptional = Optional.empty();
@@ -152,13 +154,13 @@ public abstract class Philosopher extends Thread {
     /**
      * Unblocks the seat and resets the philosophers seat.
      */
-    public void standUp(final Chair chair) {
+    private void standUp(final Chair chair) {
         releaseForks();
         say("Stand up from seat (" + chair.toString() + ")");
         chair.unblock();
     }
 
-    public Stream<Fork> waitForForks(final Chair chair) {
+    protected Stream<Fork> waitForForks(final Chair chair) {
         say("Waiting for 2 forks...");
 
         List<Fork> foundForks = new ArrayList<>();
@@ -207,7 +209,7 @@ public abstract class Philosopher extends Thread {
     /**
      * Unblock all forks and reset the forks the philosopher holds.
      */
-    public void releaseForks() {
+    protected void releaseForks() {
         final String forks = getForks().map(Object::toString).collect(Collectors.joining(", "));
         say("Release my forks" + ((forks.length() > 0) ? " (" + forks + ")" : " (no forks picked yet)"));
         getForks().forEach(Fork::unblock);
