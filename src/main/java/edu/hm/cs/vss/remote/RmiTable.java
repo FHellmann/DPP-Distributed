@@ -1,12 +1,7 @@
 package edu.hm.cs.vss.remote;
 
-import edu.hm.cs.vss.Chair;
-import edu.hm.cs.vss.Fork;
-import edu.hm.cs.vss.TableMaster;
-
 import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.util.Optional;
 
 /**
  * Created by Fabio on 16.04.2016.
@@ -25,10 +20,6 @@ public interface RmiTable extends Remote {
     void addChair(final String host, final String name) throws RemoteException;
 
     void removeChair(final String host, final String name) throws RemoteException;
-
-    Chair getChair(final int index) throws RemoteException;
-
-    int getChairCount() throws RemoteException;
 
     boolean blockChairIfAvailable(final String name) throws RemoteException;
 

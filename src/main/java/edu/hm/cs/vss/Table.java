@@ -21,7 +21,6 @@ public interface Table {
     int NETWORK_PORT = 32984;
 
     /**
-     * 
      * @return
      */
     default String getName() {
@@ -49,20 +48,17 @@ public interface Table {
     Stream<Table> getTables();
 
     /**
-     *
      * @param philosopher
      * @return
      */
     void addPhilosopher(final Philosopher philosopher);
 
     /**
-     *
      * @param philosopher
      */
     void removePhilosopher(final Philosopher philosopher);
 
     /**
-     *
      * @return
      */
     Stream<Philosopher> getPhilosophers();

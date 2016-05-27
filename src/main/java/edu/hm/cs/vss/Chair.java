@@ -67,7 +67,7 @@ public interface Chair extends Serializable {
                     final boolean acquire = semaphore.tryAcquire(1, TimeUnit.MINUTES);
                     if (acquire && block.compareAndSet(false, true)) {
                         return Optional.of(this);
-                    } else if(acquire) {
+                    } else if (acquire) {
                         semaphore.release();
                     }
                     return Optional.empty();
