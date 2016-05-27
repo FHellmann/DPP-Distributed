@@ -1,5 +1,6 @@
 package edu.hm.cs.vss;
 
+import edu.hm.cs.vss.local.LocalTablePool;
 import edu.hm.cs.vss.remote.RemoteChair;
 import edu.hm.cs.vss.remote.RemoteTable;
 
@@ -73,8 +74,8 @@ public interface BackupService extends Serializable {
 
     Stream<Chair> getChairs();
 
-    default void addPhilosopher(final String name, final boolean hungry) {
-        addPhilosopher(new Philosopher.Builder().name(name).setHungry(hungry).setFileLogger().create());
+    default void addPhilosopher(final Table table, final String name, final boolean hungry, final int meals) {
+        addPhilosopher(new Philosopher.Builder().setTable(table).name(name).setHungry(hungry).setTakenMeals(meals).setFileLogger().create());
     }
 
     void addPhilosopher(final Philosopher philosopher);

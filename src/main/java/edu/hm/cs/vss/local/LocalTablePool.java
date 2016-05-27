@@ -172,12 +172,12 @@ public class LocalTablePool implements RmiTable, Table, Observer {
         disconnectFromTable(host);
     }
 
-    public void addPhilosopher(final String host, final String name, final boolean hungry) throws RemoteException {
+    public void addPhilosopher(final String host, final String name, final boolean hungry, final int takenMeals) throws RemoteException {
         getTables().parallel()
                 .skip(1)
                 .filter(table -> table.getName().equals(host))
                 .findAny()
-                .ifPresent(table -> table.getBackupService().addPhilosopher(name, hungry));
+                .ifPresent(table -> table.getBackupService().addPhilosopher(this, name, hungry, takenMeals));
     }
 
     public void removePhilosopher(final String host, final String name) throws RemoteException {

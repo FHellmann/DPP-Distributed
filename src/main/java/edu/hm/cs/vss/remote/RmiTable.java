@@ -16,7 +16,7 @@ public interface RmiTable extends Remote {
 
     void removeTable(final String host) throws RemoteException;
 
-    void addPhilosopher(final String host, final String name, final boolean hungry) throws RemoteException;
+    void addPhilosopher(final String host, final String name, final boolean hungry, final int takenMeals) throws RemoteException;
 
     void removePhilosopher(final String host, final String name) throws RemoteException;
 

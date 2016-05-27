@@ -369,9 +369,9 @@ public abstract class Philosopher extends Thread {
         }
 
         public Philosopher create() {
-            //if (table == null) {
-            //    throw new NullPointerException("Table can not be null. Use new Philosopher.Builder().setTable(Table).[...].create()");
-            //}
+            if (table == null) {
+                throw new NullPointerException("Table can not be null. Use new Philosopher.Builder().setTable(Table).[...].create()");
+            }
             final LocalPhilosopher philosopher = new LocalPhilosopher(namePrefix + name + nameSuffix, logger, table, timeSleep, timeEat, timeMediate, hungry);
             IntStream.rangeClosed(1, takenMeals)
                     .forEach(index -> philosopher.incrementMealCount());
