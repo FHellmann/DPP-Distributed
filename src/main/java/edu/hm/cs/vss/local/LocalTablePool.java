@@ -12,6 +12,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -24,6 +25,7 @@ public class LocalTablePool implements RmiTable, Table, Observer {
     private final Table localTable;
     private final TableMaster tableMaster;
     private final Logger logger;
+    private final AtomicBoolean backupLock = new AtomicBoolean();
 
     public LocalTablePool() throws IOException {
         this(new DummyLogger());
@@ -273,7 +275,22 @@ public class LocalTablePool implements RmiTable, Table, Observer {
     }
 
     @Override
+    public boolean setTableBlock(boolean block) throws RemoteException {
+        return false;
+    }
+
+    @Override
     public void update(Observable observable, Object object) {
+
+        // Only allow one thread to work here
+        if(!backupLock.compareAndSet(false, true)) {
+            logger.log("Backup is already locked, bye");
+            return;
+        }
+
+        logger.log("suspending all local philosophers");
+        localTable.getPhilosophers().forEach(Philosopher::putToSleep);
+
         final Table table = (Table) object; // This table as been disconnected!
         final BackupService tableBackupService = table.getBackupService();
         logger.log("Unreachable table " + table.getName() + " detected...");

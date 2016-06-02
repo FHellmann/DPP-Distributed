@@ -58,8 +58,7 @@ public class Main {
                                     .forEach(System.out::println));
                     System.out.println("Local Philosopher(s):");
                     table.getPhilosophers()
-                            .map(Thread::getName)
-                            .map(name -> "\t- " + name)
+                            .map(philo -> "\t- " + philo.getName() + ": " + philo.getMealCount())
                             .forEach(System.out::println);
                     System.out.println("######################### ENDE #########################");
                 }

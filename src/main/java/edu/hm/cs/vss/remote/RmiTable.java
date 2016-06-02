@@ -39,4 +39,6 @@ public interface RmiTable extends Remote {
     void unblockFork(final String name) throws RemoteException;
 
     int getChairWaitingPhilosophers(final String name) throws RemoteException;
+
+    boolean setTableBlock(final boolean block) throws RemoteException;
 }

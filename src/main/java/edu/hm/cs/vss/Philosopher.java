@@ -25,9 +25,11 @@ public abstract class Philosopher extends Thread {
     protected static final long DEFAULT_TIME_TO_BANN = TimeUnit.MILLISECONDS.convert(5, TimeUnit.MILLISECONDS);
     private static final int MAX_DEADLOCK_COUNT = 10;
     private static final DeadlockFunction DEADLOCK_FUNCTION = (philosopher, forks) -> {
+        //philosopher.say("I deadlocked, unlocking forks");
         forks.parallelStream().forEach(Fork::unblock);
         forks.clear();
     };
+    private boolean threadSuspended = false;
 
     /**
      * Get the logger of the philosopher.
@@ -108,11 +110,30 @@ public abstract class Philosopher extends Thread {
 
     public abstract Stream<OnStandUpListener> getOnStandUpListener();
 
+    public void putToSleep(){
+        threadSuspended = true;
+    }
+
+    public void wakeUp(){
+        threadSuspended = false;
+        notify();
+    }
+
     public Chair waitForSitDown() {
         say("Waiting for a nice seat...");
 
         Optional<Chair> chairOptional = Optional.empty();
         do {
+            synchronized(this) {
+                while (threadSuspended) {
+                    // TODO: something better than this
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
             // waiting for a seat... if one is available it is directly blocked (removed from table)
             if (getTable().getTables().map(Table::getTableMaster).allMatch(tableMaster -> tableMaster.isAllowedToTakeSeat(getMealCount()))) {
                 unbanned();
@@ -126,6 +147,7 @@ public abstract class Philosopher extends Thread {
                     try {
                         chairOptional = chairOptional.get().blockIfAvailable();
                     } catch (InterruptedException e) {
+                        e.printStackTrace();
                         throw new RuntimeException(e);
                     }
                 }
