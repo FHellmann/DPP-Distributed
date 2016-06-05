@@ -31,6 +31,8 @@ public abstract class Philosopher extends Thread {
     };
     private boolean threadSuspended = false;
 
+    private static Object wakeSync = new Object();
+
     /**
      * Get the logger of the philosopher.
      *
@@ -124,16 +126,19 @@ public abstract class Philosopher extends Thread {
 
         Optional<Chair> chairOptional = Optional.empty();
         do {
-            synchronized(this) {
-                while (threadSuspended) {
-                    // TODO: something better than this
-                    try {
-                        wait();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+            if(threadSuspended) {
+                synchronized (this) {
+                    while (threadSuspended) {
+                        // TODO: something better than this
+                        try {
+                            wait();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
             }
+
             // waiting for a seat... if one is available it is directly blocked (removed from table)
             if (getTable().getTables().map(Table::getTableMaster).allMatch(tableMaster -> tableMaster.isAllowedToTakeSeat(getMealCount()))) {
                 unbanned();
