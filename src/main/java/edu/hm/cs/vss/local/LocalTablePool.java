@@ -275,7 +275,7 @@ public class LocalTablePool implements RmiTable, Table, Observer {
     }
 
     @Override
-    public boolean setTableBlock(boolean block) throws RemoteException {
+    public boolean backupFinished() throws RemoteException {
         return false;
     }
 
@@ -299,9 +299,33 @@ public class LocalTablePool implements RmiTable, Table, Observer {
             if (!tables.get(1).getName().equals(table.getName())) {
                 logger.log(table.getName() + " is not on the right of our table, yeah");
 
+                RemoteTable restoringTableTemp = null;
+                for (int i = 1; i < tables.size(); i++) {
+                    if (tables.get(i).getName().equals(table.getName())) {
+                        restoringTableTemp = (RemoteTable) tables.get(i + 1);
+                        break;
+                    }
+                }
+
+                assert (restoringTableTemp != null);
+
+                final RemoteTable restoringTable = restoringTableTemp;
+
                 (new Thread() {
                     public void run() {
-                        // TODO: check if we can restart our philosophers
+                        while (true) {
+                            try {
+                                if(restoringTable.getRmi().backupFinished()){
+                                    localTable.getPhilosophers().forEach(Philosopher::wakeUp);
+                                    break;
+                                }
+                                Thread.sleep(1000);
+                            } catch (RemoteException e) {
+                                restoringTable.handleRemoteTableDisconnected(e);
+                            } catch (InterruptedException e) {
+                                // ignore exception
+                            }
+                        }
                     }
                 }).start();
 

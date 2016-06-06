@@ -118,7 +118,7 @@ public abstract class Philosopher extends Thread {
 
     public void wakeUp(){
         threadSuspended = false;
-        notify();
+        notifyAll();
     }
 
     public Chair waitForSitDown() {
