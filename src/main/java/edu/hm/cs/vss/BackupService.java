@@ -1,6 +1,5 @@
 package edu.hm.cs.vss;
 
-import edu.hm.cs.vss.local.LocalTablePool;
 import edu.hm.cs.vss.remote.RemoteChair;
 import edu.hm.cs.vss.remote.RemoteTable;
 
@@ -8,7 +7,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**

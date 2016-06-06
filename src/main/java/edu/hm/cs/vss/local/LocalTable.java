@@ -18,7 +18,7 @@ public class LocalTable implements Table {
     private final Logger logger;
     private TableMaster tableMaster;
 
-    public LocalTable() throws IOException {
+    public LocalTable() {
         this(new DummyLogger());
     }
 

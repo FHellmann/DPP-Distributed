@@ -1,7 +1,5 @@
 package edu.hm.cs.vss;
 
-import java.io.Serializable;
-
 /**
  * The Table Master sits at every table. He decides whether a philosopher is allowed to take a seat or not.
  */

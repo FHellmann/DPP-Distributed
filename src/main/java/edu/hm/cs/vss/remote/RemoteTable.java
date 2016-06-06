@@ -101,7 +101,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
 
     @Override
     public Stream<Chair> getChairs() {
-        return backupService.getChairs();
+        return getBackupService().getChairs();
     }
 
     @Override
