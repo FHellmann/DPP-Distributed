@@ -268,7 +268,7 @@ public class LocalTablePool implements RmiTable, Table, Observer {
 
     @Override
     public boolean backupFinished() throws RemoteException {
-        return false;
+        return backupLock.get();
     }
 
     @Override
@@ -340,6 +340,8 @@ public class LocalTablePool implements RmiTable, Table, Observer {
         tableBackupService.getChairs().forEach(this::addChair);
         tableBackupService.getPhilosophers().forEach(this::addPhilosopher);
         logger.log("Restored unreachable table " + table.getName() + "!");
+
+        backupLock.set(false);
     }
 
     private Table getLocalTable() {
