@@ -7,6 +7,7 @@ import edu.hm.cs.vss.remote.RemoteTable;
 import edu.hm.cs.vss.remote.RmiTable;
 
 import java.io.IOException;
+import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -40,6 +41,19 @@ public class LocalTablePool implements RmiTable, Table, Observer {
         registry.rebind(Table.class.getSimpleName(), UnicastRemoteObject.exportObject(this, NETWORK_PORT));
 
         tables.add(localTable);
+
+        (new Thread() {
+            public void run() {
+                while (true) {
+                    try {
+                        tables.stream().skip(1).map(table -> (RemoteTable)table).forEach(RemoteTable::backupFinished);
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        // ignore exception
+                    }
+                }
+            }
+        }).start();
     }
 
     @Override
@@ -268,7 +282,7 @@ public class LocalTablePool implements RmiTable, Table, Observer {
 
     @Override
     public boolean backupFinished() throws RemoteException {
-        return backupLock.get();
+        return !backupLock.get();
     }
 
     @Override
@@ -286,7 +300,7 @@ public class LocalTablePool implements RmiTable, Table, Observer {
         final Table table = (Table) object; // This table as been disconnected!
 
         // There are enough tables to even consider that we are not responsible
-        if (tables.size() >= 2) {
+        if (tables.size() > 2) {
             // We are NOT on the left side of the dead table
             if (!tables.get(1).getName().equals(table.getName())) {
                 logger.log(table.getName() + " is not on the right of our table, yeah");
@@ -305,15 +319,20 @@ public class LocalTablePool implements RmiTable, Table, Observer {
 
                 (new Thread() {
                     public void run() {
+                        // TODO: Set lock in restoringTable
+                        try {
+                            Thread.sleep(10000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
                         while (true) {
                             try {
-                                if(restoringTable.getRmi().backupFinished()){
+                                if(restoringTable.backupFinished()){
+                                    backupLock.set(false);
                                     localTable.getPhilosophers().forEach(Philosopher::wakeUp);
                                     break;
                                 }
                                 Thread.sleep(1000);
-                            } catch (RemoteException e) {
-                                restoringTable.handleRemoteTableDisconnected(e);
                             } catch (InterruptedException e) {
                                 // ignore exception
                             }

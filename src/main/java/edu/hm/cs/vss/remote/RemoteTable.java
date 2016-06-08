@@ -134,11 +134,11 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
         }
     }
 
-    public RmiTable getRmi() {
+    protected RmiTable getRmi() {
         return table;
     }
 
-    public void handleRemoteTableDisconnected(final RemoteException e) {
+    protected void handleRemoteTableDisconnected(final RemoteException e) {
         //logger.log(e.getMessage());
         // e.printStackTrace();
         setChanged();
@@ -152,5 +152,14 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
             e.printStackTrace();
             return "127.0.0.1"; // TODO This is a potential bug if the host can not be detected automaticly
         }
+    }
+
+    public boolean backupFinished(){
+        try {
+            return table.backupFinished();
+        } catch (RemoteException e) {
+            handleRemoteTableDisconnected(e);
+        }
+        return false;
     }
 }
