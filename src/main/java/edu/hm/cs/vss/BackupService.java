@@ -52,6 +52,11 @@ public interface BackupService extends Serializable {
             public Stream<Philosopher> getPhilosophers() {
                 return philosopherList.stream();
             }
+
+            @Override
+            public RestoreService getRestoreService() {
+                return null;
+            }
         };
     }
 
@@ -95,4 +100,6 @@ public interface BackupService extends Serializable {
                 .findAny()
                 .ifPresent(Philosopher::incrementMealCount);
     }
+
+    RestoreService getRestoreService();
 }
