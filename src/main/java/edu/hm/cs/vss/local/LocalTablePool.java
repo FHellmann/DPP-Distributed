@@ -7,14 +7,12 @@ import edu.hm.cs.vss.remote.RemoteTable;
 import edu.hm.cs.vss.remote.RmiTable;
 
 import java.io.IOException;
-import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -48,9 +46,18 @@ public class LocalTablePool implements Table {
             public void run() {
                 while (true) {
                     try {
-                        tables.stream().skip(1).map(table -> (RemoteTable)table).forEach(RemoteTable::backupFinished);
+                        if (!backupLock.get()) {
+                            tables.stream().skip(1).map(table -> (RemoteTable) table).forEach(table -> {
+                                try {
+                                    table.backupFinished();
+                                } catch (RemoteException e) {
+                                    table.handleRemoteTableDisconnected(e);
+                                    throw new RuntimeException(e);
+                                }
+                            });
+                        }
                         Thread.sleep(1000);
-                    } catch (InterruptedException e) {
+                    } catch (Exception e) {
                         // ignore exception
                     }
                 }
@@ -333,53 +340,41 @@ public class LocalTablePool implements Table {
             }
 
             logger.log("suspending all local philosophers");
-            localTable.getPhilosophers().forEach(Philosopher::putToSleep);
+            getPhilosophers().forEach(Philosopher::putToSleep);
 
             final Table table = (Table) object; // This table as been disconnected!
 
             // There are enough tables to even consider that we are not responsible
-            if (tables.size() > 2) {
+            if (tables.size() > 2 && !tables.get(1).getName().equals(table.getName())) {
                 // We are NOT on the left side of the dead table
-                if (!tables.get(1).getName().equals(table.getName())) {
-                    logger.log(table.getName() + " is not on the right of our table, yeah");
+                logger.log(table.getName() + " is not on the right of our table, yeah");
 
-                    RemoteTable restoringTableTemp = null;
-                    for (int i = 1; i < tables.size(); i++) {
-                        if (tables.get(i).getName().equals(table.getName())) {
-                            restoringTableTemp = (RemoteTable) tables.get(i + 1);
-                            break;
+                RemoteTable restoringTableTemp = (RemoteTable) tables.get(tables.indexOf(table) - 1);
+
+                (new Thread() {
+                    public void run() {
+                        // TODO: Set lock in restoringTable
+                        try {
+                            Thread.sleep(10000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
                         }
-                    }
-
-                    assert (restoringTableTemp != null);
-
-                    final RemoteTable restoringTable = restoringTableTemp;
-
-                    (new Thread() {
-                        public void run() {
-                            // TODO: Set lock in restoringTable
-                            try {
-                                Thread.sleep(10000);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                            while (true) {
+                        try {
+                            while (!restoringTableTemp.backupFinished()) {
                                 try {
-                                    if(restoringTable.backupFinished()){
-                                        backupLock.set(false);
-                                        localTable.getPhilosophers().forEach(Philosopher::wakeUp);
-                                        break;
-                                    }
                                     Thread.sleep(1000);
                                 } catch (InterruptedException e) {
                                     // ignore exception
                                 }
                             }
+                        } catch (RemoteException e) {
+                            restoringTableTemp.handleRemoteTableDisconnected(e);
                         }
-                    }).start();
-
-                    return;
-                }
+                        backupLock.set(false);
+                        getPhilosophers().forEach(Philosopher::wakeUp);
+                    }
+                }).start();
+                return;
             }
             // "else" - either we are the only table left, or we are responsible for backing up
 

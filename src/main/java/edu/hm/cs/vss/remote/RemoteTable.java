@@ -138,7 +138,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
         return table;
     }
 
-    protected void handleRemoteTableDisconnected(final RemoteException e) {
+    public void handleRemoteTableDisconnected(final RemoteException e) {
         //logger.log(e.getMessage());
         // e.printStackTrace();
         setChanged();
@@ -154,12 +154,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
         }
     }
 
-    public boolean backupFinished(){
-        try {
-            return table.backupFinished();
-        } catch (RemoteException e) {
-            handleRemoteTableDisconnected(e);
-        }
-        return false;
+    public boolean backupFinished() throws RemoteException {
+        return table.backupFinished();
     }
 }
