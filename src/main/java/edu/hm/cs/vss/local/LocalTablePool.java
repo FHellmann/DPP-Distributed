@@ -17,11 +17,12 @@ import java.util.stream.Stream;
 /**
  * Created by fhellman on 18.04.2016.
  */
-public class LocalTablePool implements RmiTable, Table, Observer {
+public class LocalTablePool implements Table {
     private final List<Table> tables = Collections.synchronizedList(new LinkedList<>());
     private final List<Philosopher> localPhilosophers = Collections.synchronizedList(new ArrayList<>());
     private final Table localTable;
     private final TableMaster tableMaster;
+    private final Observer tableBrokeUpObserver;
     private final Logger logger;
 
     public LocalTablePool() throws IOException {
@@ -31,10 +32,11 @@ public class LocalTablePool implements RmiTable, Table, Observer {
     public LocalTablePool(final Logger logger) throws IOException {
         this.localTable = new LocalTable(logger);
         this.tableMaster = new DistributedTableMaster();
+        this.tableBrokeUpObserver = new BackupRestorer();
         this.logger = logger;
 
         final Registry registry = LocateRegistry.createRegistry(NETWORK_PORT);
-        registry.rebind(Table.class.getSimpleName(), UnicastRemoteObject.exportObject(this, NETWORK_PORT));
+        registry.rebind(Table.class.getSimpleName(), UnicastRemoteObject.exportObject(new DistributedTableRmi(), NETWORK_PORT));
 
         tables.add(localTable);
     }
@@ -45,7 +47,7 @@ public class LocalTablePool implements RmiTable, Table, Observer {
         if (tables.parallelStream().noneMatch(table -> table.getName().equals(tableHost))) {
             try {
                 final RemoteTable table = new RemoteTable(tableHost, logger);
-                table.addObserver(this); // Observe table for disconnection
+                table.addObserver(tableBrokeUpObserver); // Observe table for disconnection
                 tables.add(table);
 
                 // Send all available tables to the new table
@@ -163,159 +165,110 @@ public class LocalTablePool implements RmiTable, Table, Observer {
         throw new UnsupportedOperationException();
     }
 
-    public void addTable(final String host) throws RemoteException {
-        connectToTable(host);
-    }
-
-    public void removeTable(final String host) throws RemoteException {
-        disconnectFromTable(host);
-    }
-
-    public void addPhilosopher(final String host, final String name, final boolean hungry, final int takenMeals) throws RemoteException {
-        getTables().parallel()
-                .skip(1)
-                .filter(table -> table.getName().equals(host))
-                .findAny()
-                .ifPresent(table -> table.getBackupService().addPhilosopher(this, name, hungry, takenMeals));
-    }
-
-    public void removePhilosopher(final String host, final String name) throws RemoteException {
-        getTables().parallel()
-                .skip(1)
-                .filter(table -> table.getName().equals(host))
-                .findAny()
-                .ifPresent(table -> table.getBackupService().removePhilosopher(name));
-    }
-
-    @Override
-    public void onStandUp(String host, String philosopherName) throws RemoteException {
-        getTables().parallel()
-                .skip(1)
-                .filter(table -> table.getName().equals(host))
-                .findAny()
-                .ifPresent(table -> table.getBackupService().onPhilosopherStandUp(philosopherName));
-    }
-
-    public void addChair(final String host, final String name) throws RemoteException {
-        getTables().parallel()
-                .skip(1)
-                .filter(table -> table.getName().equals(host))
-                .findAny()
-                .ifPresent(table -> table.getBackupService().addChair(name));
-    }
-
-    public void removeChair(final String host, final String name) throws RemoteException {
-        getTables().parallel()
-                .skip(1)
-                .filter(table -> table.getName().equals(host))
-                .findAny()
-                .ifPresent(table -> table.getBackupService().removeChair(name));
-    }
-
-    @Override
-    public boolean blockChairIfAvailable(String name) throws RemoteException {
-        return getLocalTable().getChairs().parallel()
-                .filter(chair -> chair.toString().equals(name))
-                .findAny()
-                .flatMap(chair -> {
-                    try {
-                        return chair.blockIfAvailable();
-                    } catch (InterruptedException e) {
-                        return Optional.empty();
-                    }
-                })
-                .isPresent();
-    }
-
-    @Override
-    public void unblockChair(String name) throws RemoteException {
-        getLocalTable().getChairs().parallel()
-                .filter(chair -> chair.toString().equals(name))
-                .findAny()
-                .ifPresent(Chair::unblock);
-    }
-
-    @Override
-    public boolean blockForkIfAvailable(String name) throws RemoteException {
-        return getLocalTable().getChairs().parallel()
-                .map(Chair::getFork)
-                .filter(fork -> fork.toString().equals(name))
-                .findAny()
-                .flatMap(Fork::blockIfAvailable)
-                .isPresent();
-    }
-
-    @Override
-    public void unblockFork(String name) throws RemoteException {
-        getLocalTable().getChairs().parallel()
-                .map(Chair::getFork)
-                .filter(fork -> fork.toString().equals(name))
-                .findAny()
-                .ifPresent(Fork::unblock);
-    }
-
-    @Override
-    public int getChairWaitingPhilosophers(String name) throws RemoteException {
-        return getLocalTable().getChairs().parallel()
-                .filter(chair -> chair.toString().equals(name))
-                .findAny()
-                .map(Chair::getWaitingPhilosopherCount)
-                .orElse(0);
-    }
-
-    @Override
-    public void update(Observable observable, Object object) {
-        final Table table = (Table) object; // This table as been disconnected!
-        final BackupService tableBackupService = table.getBackupService();
-        logger.log("Unreachable table " + table.getName() + " detected...");
-
-        logger.log("Chair(s):");
-        tableBackupService.getChairs().forEach(tmp -> logger.log("\t- " + tmp.toString()));
-        logger.log("Philosopher(s):");
-        tableBackupService.getPhilosophers().map(Philosopher::getName).map(name -> "\t- " + name).forEach(logger::log);
-
-        tables.remove(table); // Remove the disconnected table
-
-        // TODO Algorithm is missing to decide which table should restore the backup...
-        /*
-        logger.log("Try to restore unreachable table " + table.getName() + "...");
-        tableBackupService.getChairs().forEach(this::addChair);
-        tableBackupService.getPhilosophers().forEach(this::addPhilosopher);
-        logger.log("Restored unreachable table " + table.getName() + "!");
-         */
-
-        /*
-        if (tables.size() == 1) {
-            // This table is the last one -> backup the lost one
-
-        } else {
-            // Searching for a table which is not occupied enough -> hopefully it's not me!
-            final int occupationRemote = (int) (getTables().map(Table::getBackupService)
-                    .map(BackupService::createBackup)
-                    .parallel()
-                    .mapToDouble(remoteBackup -> remoteBackup.getCores() / remoteBackup.getPhilosopherCount())
-                    .max()
-                    .getAsDouble() * 100);
-            final Backup backup = getBackupService().createBackup();
-            final int occupationLocal = (int) (backup.getCores() / (double) backup.getPhilosopherCount() * 100);
-
-            // Check whether this table has less occupation then others
-            if (occupationRemote == occupationLocal) {
-                // This table is the right -> start restoring the backup
-                getBackupService().restoreBackup(table.getName());
-                getTables().parallel()
-                        .map(Table::getBackupService)
-                        .forEach(backupService -> backupService.deleteBackup(table.getName()));
-                logger.log("Restored unreachable table " + table.getName() + "!");
-            } else {
-                logger.log("Unreachable table " + table.getName() + " will be restored by another one!");
-            }
-        }
-        */
-    }
-
     private Table getLocalTable() {
         return localTable;
+    }
+
+    private final class DistributedTableRmi implements RmiTable {
+        public void addTable(final String host) throws RemoteException {
+            connectToTable(host);
+        }
+
+        public void removeTable(final String host) throws RemoteException {
+            disconnectFromTable(host);
+        }
+
+        public void addPhilosopher(final String host, final String name, final boolean hungry, final int takenMeals) throws RemoteException {
+            getTables().parallel()
+                    .skip(1)
+                    .filter(table -> table.getName().equals(host))
+                    .findAny()
+                    .ifPresent(table -> table.getBackupService().addPhilosopher(LocalTablePool.this, name, hungry, takenMeals));
+        }
+
+        public void removePhilosopher(final String host, final String name) throws RemoteException {
+            getTables().parallel()
+                    .skip(1)
+                    .filter(table -> table.getName().equals(host))
+                    .findAny()
+                    .ifPresent(table -> table.getBackupService().removePhilosopher(name));
+        }
+
+        @Override
+        public void onStandUp(String host, String philosopherName) throws RemoteException {
+            getTables().parallel()
+                    .skip(1)
+                    .filter(table -> table.getName().equals(host))
+                    .findAny()
+                    .ifPresent(table -> table.getBackupService().onPhilosopherStandUp(philosopherName));
+        }
+
+        public void addChair(final String host, final String name) throws RemoteException {
+            getTables().parallel()
+                    .skip(1)
+                    .filter(table -> table.getName().equals(host))
+                    .findAny()
+                    .ifPresent(table -> table.getBackupService().addChair(name));
+        }
+
+        public void removeChair(final String host, final String name) throws RemoteException {
+            getTables().parallel()
+                    .skip(1)
+                    .filter(table -> table.getName().equals(host))
+                    .findAny()
+                    .ifPresent(table -> table.getBackupService().removeChair(name));
+        }
+
+        @Override
+        public boolean blockChairIfAvailable(String name) throws RemoteException {
+            return getLocalTable().getChairs().parallel()
+                    .filter(chair -> chair.toString().equals(name))
+                    .findAny()
+                    .flatMap(chair -> {
+                        try {
+                            return chair.blockIfAvailable();
+                        } catch (InterruptedException e) {
+                            return Optional.empty();
+                        }
+                    })
+                    .isPresent();
+        }
+
+        @Override
+        public void unblockChair(String name) throws RemoteException {
+            getLocalTable().getChairs().parallel()
+                    .filter(chair -> chair.toString().equals(name))
+                    .findAny()
+                    .ifPresent(Chair::unblock);
+        }
+
+        @Override
+        public boolean blockForkIfAvailable(String name) throws RemoteException {
+            return getLocalTable().getChairs().parallel()
+                    .map(Chair::getFork)
+                    .filter(fork -> fork.toString().equals(name))
+                    .findAny()
+                    .flatMap(Fork::blockIfAvailable)
+                    .isPresent();
+        }
+
+        @Override
+        public void unblockFork(String name) throws RemoteException {
+            getLocalTable().getChairs().parallel()
+                    .map(Chair::getFork)
+                    .filter(fork -> fork.toString().equals(name))
+                    .findAny()
+                    .ifPresent(Fork::unblock);
+        }
+
+        @Override
+        public int getChairWaitingPhilosophers(String name) throws RemoteException {
+            return getLocalTable().getChairs().parallel()
+                    .filter(chair -> chair.toString().equals(name))
+                    .findAny()
+                    .map(Chair::getWaitingPhilosopherCount)
+                    .orElse(0);
+        }
     }
 
     private final class DistributedTableMaster extends LocalTableMaster {
@@ -344,6 +297,30 @@ public class LocalTablePool implements RmiTable, Table, Observer {
                     .filter(table -> table.getPhilosophers().count() > 0)
                     .map(Table::getTableMaster)
                     .allMatch(master -> master.isAllowedToTakeSeat(mealCount));
+        }
+    }
+
+    private final class BackupRestorer implements Observer {
+        @Override
+        public void update(Observable observable, Object object) {
+            final Table table = (Table) object; // This table has been disconnected!
+            final BackupService tableBackupService = table.getBackupService();
+            logger.log("Unreachable table " + table.getName() + " detected...");
+
+            logger.log("Chair(s):");
+            tableBackupService.getChairs().forEach(tmp -> logger.log("\t- " + tmp.toString()));
+            logger.log("Philosopher(s):");
+            tableBackupService.getPhilosophers().map(Philosopher::getName).map(name -> "\t- " + name).forEach(logger::log);
+
+            tables.remove(table); // Remove the disconnected table
+
+            // TODO Algorithm is missing to decide which table should restore the backup...
+        /*
+        logger.log("Try to restore unreachable table " + table.getName() + "...");
+        tableBackupService.getChairs().forEach(this::addChair);
+        tableBackupService.getPhilosophers().forEach(this::addPhilosopher);
+        logger.log("Restored unreachable table " + table.getName() + "!");
+         */
         }
     }
 }
