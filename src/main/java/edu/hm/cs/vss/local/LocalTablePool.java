@@ -3,6 +3,7 @@ package edu.hm.cs.vss.local;
 import edu.hm.cs.vss.*;
 import edu.hm.cs.vss.log.DummyLogger;
 import edu.hm.cs.vss.log.Logger;
+import edu.hm.cs.vss.remote.RemoteChair;
 import edu.hm.cs.vss.remote.RemoteTable;
 import edu.hm.cs.vss.remote.RmiTable;
 
@@ -152,7 +153,11 @@ public class LocalTablePool implements Table {
 
     @Override
     public void addChair(Chair chair) {
-        getLocalTable().addChair(chair);
+        if(chair instanceof RemoteChair){
+            getLocalTable().addChair(new Chair.Builder().setName(chair.toString()).create());
+        } else {
+            getLocalTable().addChair(chair);
+        }
 
         // Inform other tables
         getTables().parallel()
