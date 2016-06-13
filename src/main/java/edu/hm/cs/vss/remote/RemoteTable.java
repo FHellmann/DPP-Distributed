@@ -157,4 +157,8 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
     public boolean backupFinished() throws RemoteException {
         return table.backupFinished();
     }
+
+    public String getHost() {
+        return host;
+    }
 }

@@ -76,6 +76,14 @@ public class LocalTablePool implements Table {
                 table.addObserver(tableBrokeUpObserver); // Observe table for disconnection
                 tables.add(table);
 
+                // Removes backed up table on reconnection
+                for (Iterator<Table> iter = backedUpTables.listIterator(); iter.hasNext(); ) {
+                    RemoteTable t = (RemoteTable)iter.next();
+                    if (t.getHost().equals(tableHost)) {
+                        iter.remove();
+                    }
+                }
+
                 // Send all available tables to the new table
                 tables.stream()
                         .map(Table::getName)
