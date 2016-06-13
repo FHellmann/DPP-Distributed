@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -29,9 +30,9 @@ public abstract class Philosopher extends Thread {
         forks.parallelStream().forEach(Fork::unblock);
         forks.clear();
     };
-    private boolean threadSuspended = false;
+    private AtomicBoolean threadSuspended = new AtomicBoolean(false);
 
-    private static Object wakeSync = new Object();
+    private final static Object wakeSync = new Object();
 
     /**
      * Get the logger of the philosopher.
@@ -112,34 +113,37 @@ public abstract class Philosopher extends Thread {
 
     public abstract void removeOnStandUpListener(final OnStandUpListener listener);
 
-    public void putToSleep(){
-        threadSuspended = true;
+    public void putToSleep() {
+        threadSuspended.set(true);
+        say("Going to sleep now");
     }
 
-    public void wakeUp(){
-        threadSuspended = false;
-        notifyAll();
+    public void wakeUp() {
+        threadSuspended.set(false);
+        say("Waking up");
     }
 
     protected abstract Stream<OnStandUpListener> getOnStandUpListener();
 
     private Chair waitForSitDown() {
+        Optional<Chair> chairOptional = Optional.empty();
         say("Waiting for a nice seat...");
 
-        Optional<Chair> chairOptional = Optional.empty();
         do {
-            if(threadSuspended) {
-                synchronized (this) {
-                    while (threadSuspended) {
-                        // TODO: something better than this
-                        try {
-                            wait();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
+            //synchronized (wakeSync) {
+            while (threadSuspended.get()) {
+                // TODO: something better than this
+                try {
+                    //wait();
+                    say("Sleeping for 100 ms");
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
             }
+            //}
+
+            say("Waiting for seat");
 
             // waiting for a seat... if one is available it is directly blocked (removed from table)
             if (getTable().getTables().map(Table::getTableMaster).allMatch(tableMaster -> tableMaster.isAllowedToTakeSeat(getMealCount()))) {

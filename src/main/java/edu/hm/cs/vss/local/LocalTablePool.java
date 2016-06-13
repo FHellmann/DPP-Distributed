@@ -20,6 +20,7 @@ import java.util.stream.Stream;
  */
 public class LocalTablePool implements Table {
     private final List<Table> tables = Collections.synchronizedList(new LinkedList<>());
+    private final List<Table> backedUpTables = Collections.synchronizedList(new LinkedList<>());
     private final List<Philosopher> localPhilosophers = Collections.synchronizedList(new ArrayList<>());
     private final Table localTable;
     private final TableMaster tableMaster;
@@ -335,65 +336,74 @@ public class LocalTablePool implements Table {
 
             // Only allow one thread to work here
             if (!backupLock.compareAndSet(false, true)) {
-                logger.log("Backup is already locked, bye");
                 return;
             }
 
-            logger.log("suspending all local philosophers");
-            getPhilosophers().forEach(Philosopher::putToSleep);
+            synchronized (tables) {
+                final Table table = (Table) object; // This table as been disconnected!
+                logger.log("Unreachable table " + table.getName() + " detected...");
 
-            final Table table = (Table) object; // This table as been disconnected!
+                if (backedUpTables.stream().anyMatch(t -> table.getName().equals(t.getName()))) {
+                    logger.log("table " + table.getName() + " already backed up, exiting");
+                    return;
+                }
 
-            // There are enough tables to even consider that we are not responsible
-            if (tables.size() > 2 && !tables.get(1).getName().equals(table.getName())) {
-                // We are NOT on the left side of the dead table
-                logger.log(table.getName() + " is not on the right of our table, yeah");
+                logger.log("suspending all local philosophers");
+                getPhilosophers().forEach(Philosopher::putToSleep);
 
-                RemoteTable restoringTableTemp = (RemoteTable) tables.get(tables.indexOf(table) - 1);
+                // There are enough tables to even consider that we are not responsible
+                if (tables.size() > 2 && !tables.get(1).getName().equals(table.getName())) {
+                    // We are NOT on the left side of the dead table
+                    logger.log(table.getName() + " is not on the right of our table, yeah");
 
-                (new Thread() {
-                    public void run() {
-                        // TODO: Set lock in restoringTable
-                        try {
-                            Thread.sleep(10000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        try {
-                            while (!restoringTableTemp.backupFinished()) {
-                                try {
-                                    Thread.sleep(1000);
-                                } catch (InterruptedException e) {
-                                    // ignore exception
-                                }
+                    RemoteTable restoringTableTemp = (RemoteTable) tables.get(tables.indexOf(table) - 1);
+
+                    (new Thread() {
+                        public void run() {
+                            // TODO: Set lock in restoringTable
+                            try {
+                                Thread.sleep(10000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
                             }
-                        } catch (RemoteException e) {
-                            restoringTableTemp.handleRemoteTableDisconnected(e);
+                            try {
+                                while (!restoringTableTemp.backupFinished()) {
+                                    try {
+                                        Thread.sleep(1000);
+                                    } catch (InterruptedException e) {
+                                        // ignore exception
+                                    }
+                                }
+                            } catch (RemoteException e) {
+                                restoringTableTemp.handleRemoteTableDisconnected(e);
+                            }
+                            backupLock.set(false);
+                            getPhilosophers().forEach(Philosopher::wakeUp);
                         }
-                        backupLock.set(false);
-                        getPhilosophers().forEach(Philosopher::wakeUp);
-                    }
-                }).start();
-                return;
+                    }).start();
+                    return;
+                }
+                // "else" - either we are the only table left, or we are responsible for backing up
+
+                final BackupService tableBackupService = table.getBackupService();
+
+                logger.log("Chair(s):");
+                tableBackupService.getChairs().forEach(tmp -> logger.log("\t- " + tmp.toString()));
+                logger.log("Philosopher(s):");
+                tableBackupService.getPhilosophers().map(Philosopher::getName).map(name -> "\t- " + name).forEach(logger::log);
+
+                tables.remove(table); // Remove the disconnected table
+
+                logger.log("Try to restore unreachable table " + table.getName() + "...");
+                tableBackupService.getChairs().forEach(LocalTablePool.this::addChair);
+                tableBackupService.getPhilosophers().forEach(LocalTablePool.this::addPhilosopher);
+                logger.log("Restored unreachable table " + table.getName() + "!");
+
+                backedUpTables.add(table);
+
+                getPhilosophers().forEach(Philosopher::wakeUp);
+                backupLock.set(false);
             }
-            // "else" - either we are the only table left, or we are responsible for backing up
-
-            final BackupService tableBackupService = table.getBackupService();
-            logger.log("Unreachable table " + table.getName() + " detected...");
-
-            logger.log("Chair(s):");
-            tableBackupService.getChairs().forEach(tmp -> logger.log("\t- " + tmp.toString()));
-            logger.log("Philosopher(s):");
-            tableBackupService.getPhilosophers().map(Philosopher::getName).map(name -> "\t- " + name).forEach(logger::log);
-
-            tables.remove(table); // Remove the disconnected table
-
-            logger.log("Try to restore unreachable table " + table.getName() + "...");
-            tableBackupService.getChairs().forEach(LocalTablePool.this::addChair);
-            tableBackupService.getPhilosophers().forEach(LocalTablePool.this::addPhilosopher);
-            logger.log("Restored unreachable table " + table.getName() + "!");
-
-            backupLock.set(false);
         }
     }
 }
