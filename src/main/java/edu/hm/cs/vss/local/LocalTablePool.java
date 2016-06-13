@@ -24,7 +24,7 @@ public class LocalTablePool implements Table {
     private final List<Philosopher> localPhilosophers = Collections.synchronizedList(new ArrayList<>());
     private final Table localTable;
     private final TableMaster tableMaster;
-    private final Observer tableBrokeUpObserver;
+    private final BackupRestorer tableBrokeUpObserver;
     private final Logger logger;
     private final AtomicBoolean backupLock = new AtomicBoolean();
 
@@ -330,7 +330,12 @@ public class LocalTablePool implements Table {
         }
     }
 
-    private final class BackupRestorer implements Observer {
+    private final class BackupRestorer extends Thread implements Observer {
+        @Override
+        public void run() {
+            super.run();
+        }
+
         @Override
         public void update(Observable observable, Object object) {
 
