@@ -1,6 +1,5 @@
 package edu.hm.cs.vss;
 
-import edu.hm.cs.vss.local.LocalPhilosopher;
 import edu.hm.cs.vss.log.DummyLogger;
 import edu.hm.cs.vss.log.FileLogger;
 import edu.hm.cs.vss.log.Logger;
@@ -18,7 +17,7 @@ import java.util.stream.Stream;
 /**
  * Created by Fabio Hellmann on 17.03.2016.
  */
-public abstract class Philosopher extends Thread {
+public class Philosopher extends Thread {
     protected static final int DEFAULT_EAT_ITERATIONS = 3;
     private static final long DEFAULT_TIME_TO_SLEEP = TimeUnit.MILLISECONDS.convert(10, TimeUnit.MILLISECONDS);
     private static final long DEFAULT_TIME_TO_MEDIATE = TimeUnit.MILLISECONDS.convert(5, TimeUnit.MILLISECONDS);
@@ -33,85 +32,150 @@ public abstract class Philosopher extends Thread {
     private AtomicBoolean threadSuspended = new AtomicBoolean(false);
 
     private final static Object wakeSync = new Object();
+    private final Logger logger;
+    private final Table table;
+    private final long timeSleep;
+    private final long timeEat;
+    private final long timeMediate;
+    private final boolean veryHungry;
+    private List<Fork> forks = new ArrayList<>();
+    private final int eatIterations;
+    private int mealCount;
+    private long bannedTime = -1;
+    private final List<OnStandUpListener> onStandUpListeners = new ArrayList<>();
+
+    public Philosopher(final String name,
+                       final Logger logger,
+                       final Table table,
+                       final long timeSleep,
+                       final long timeEat,
+                       final long timeMediate,
+                       final boolean veryHungry) {
+        setName(name);
+        this.logger = logger;
+        this.table = table;
+        this.timeSleep = timeSleep;
+        this.timeEat = timeEat;
+        this.timeMediate = veryHungry ? timeMediate / 2 : timeMediate;
+        this.veryHungry = veryHungry;
+        this.eatIterations = veryHungry ? DEFAULT_EAT_ITERATIONS * 2 : DEFAULT_EAT_ITERATIONS;
+    }
 
     /**
      * Get the logger of the philosopher.
      *
      * @return the logger.
      */
-    protected abstract Logger getLogger();
+    public Logger getLogger() {
+        return logger;
+    }
 
     /**
      * Get the table where the philosopher can get something to eat.
      *
      * @return the table.
      */
-    protected abstract Table getTable();
+    public Table getTable() {
+        return table;
+    }
 
     /**
      * Get the amount of eaten meals.
      *
      * @return the amount of eaten meals.
      */
-    public abstract int getMealCount();
+    public int getMealCount() {
+        return mealCount;
+    }
 
     /**
      * If a meal was eat increment the counter.
      */
-    public abstract void incrementMealCount();
+    public void incrementMealCount() {
+        mealCount++;
+    }
 
     /**
      * Get the iteration count of how many times the philosopher want's to eat something. (Default is 3)
      *
      * @return the iteration count.
      */
-    protected abstract int getEatIterationCount();
+    public int getEatIterationCount() {
+        return eatIterations;
+    }
 
     /**
      * Refuse the philosopher a seat at the table.
      */
-    protected abstract void banned();
+    public void banned() {
+        bannedTime = DEFAULT_TIME_TO_BANN;
+    }
 
     /**
      * Allow the philosopher to sit down at the table.
      */
-    protected abstract void unbanned();
+    public void unbanned() {
+        bannedTime = -1;
+    }
 
     /**
      * Get the time the philosopher is no longer allowed to sit at the table.
      *
      * @return the time.
      */
-    protected abstract Optional<Long> getBannedTime();
+    public Optional<Long> getBannedTime() {
+        if (bannedTime >= 0) {
+            return Optional.ofNullable(bannedTime);
+        }
+        return Optional.empty();
+    }
 
     /**
      * Get the time to sleep. (in Milliseconds)
      *
      * @return the time to sleep.
      */
-    protected abstract long getTimeToSleep();
+    public long getTimeToSleep() {
+        return timeSleep;
+    }
 
     /**
      * Get the time to eat. (in Milliseconds)
      *
      * @return the time to eat.
      */
-    protected abstract long getTimeToEat();
+    public long getTimeToEat() {
+        return timeEat;
+    }
 
     /**
      * Get the time to mediate. (in Milliseconds)
      *
      * @return the time to mediate.
      */
-    protected abstract long getTimeToMediate();
+    public long getTimeToMediate() {
+        return timeMediate;
+    }
 
-    public abstract boolean isHungry();
+    public boolean isHungry() {
+        return veryHungry;
+    }
 
-    protected abstract Stream<Fork> getForks();
+    public Stream<Fork> getForks() {
+        return forks.stream();
+    }
 
-    public abstract void addOnStandUpListener(final OnStandUpListener listener);
+    public void addOnStandUpListener(OnStandUpListener listener) {
+        onStandUpListeners.add(listener);
+    }
 
-    public abstract void removeOnStandUpListener(final OnStandUpListener listener);
+    public void removeOnStandUpListener(OnStandUpListener listener) {
+        onStandUpListeners.remove(listener);
+    }
+
+    public Stream<OnStandUpListener> getOnStandUpListener() {
+        return onStandUpListeners.stream();
+    }
 
     public void putToSleep() {
         threadSuspended.set(true);
@@ -122,8 +186,6 @@ public abstract class Philosopher extends Thread {
         threadSuspended.set(false);
         say("Waking up");
     }
-
-    protected abstract Stream<OnStandUpListener> getOnStandUpListener();
 
     private Chair waitForSitDown() {
         Optional<Chair> chairOptional = Optional.empty();
@@ -189,6 +251,7 @@ public abstract class Philosopher extends Thread {
         releaseForks();
         say("Stand up from seat (" + chair.toString() + ")");
         chair.unblock();
+        getOnStandUpListener().forEach(listener -> listener.onStandUp(this));
     }
 
     protected Stream<Fork> waitForForks(final Chair chair) {
@@ -234,7 +297,8 @@ public abstract class Philosopher extends Thread {
 
         say("Found 2 forks (" + fork.toString() + ", " + neighbourFork.toString() + ")! :D");
 
-        return foundForks.stream();
+        this.forks = foundForks;
+        return forks.stream();
     }
 
     /**
@@ -244,6 +308,7 @@ public abstract class Philosopher extends Thread {
         final String forks = getForks().map(Object::toString).collect(Collectors.joining(", "));
         say("Release my forks" + ((forks.length() > 0) ? " (" + forks + ")" : " (no forks picked yet)"));
         getForks().forEach(Fork::unblock);
+        this.forks.clear();
     }
 
     /**
@@ -251,7 +316,6 @@ public abstract class Philosopher extends Thread {
      */
     private void eat() throws InterruptedException {
         incrementMealCount();
-        getOnStandUpListener().forEach(listener -> listener.onStandUp(this));
         say("Eating for " + getTimeToEat() + " ms");
         onThreadSleep(getTimeToEat());
     }
@@ -405,7 +469,7 @@ public abstract class Philosopher extends Thread {
             if (table == null) {
                 throw new NullPointerException("Table can not be null. Use new Philosopher.Builder().setTable(Table).[...].create()");
             }
-            final LocalPhilosopher philosopher = new LocalPhilosopher(namePrefix + name + nameSuffix, logger, table, timeSleep, timeEat, timeMediate, hungry);
+            final Philosopher philosopher = new Philosopher(namePrefix + name + nameSuffix, logger, table, timeSleep, timeEat, timeMediate, hungry);
             IntStream.rangeClosed(1, takenMeals)
                     .forEach(index -> philosopher.incrementMealCount());
             return philosopher;

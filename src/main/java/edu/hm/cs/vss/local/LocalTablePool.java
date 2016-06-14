@@ -332,7 +332,6 @@ public class LocalTablePool implements Table {
         @Override
         public boolean isAllowedToTakeSeat(Integer mealCount) {
             return getTables()
-                    .filter(table -> table.getPhilosophers().count() > 0)
                     .map(Table::getTableMaster)
                     .allMatch(master -> master.isAllowedToTakeSeat(mealCount));
         }

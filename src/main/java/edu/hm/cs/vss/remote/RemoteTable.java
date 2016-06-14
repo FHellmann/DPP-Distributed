@@ -111,7 +111,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
 
     @Override
     public TableMaster getTableMaster() {
-        return mealCount -> mealCount <= getBackupService().getPhilosophers()
+        return mealCount -> !getBackupService().getPhilosophers().findAny().isPresent() || mealCount <= getBackupService().getPhilosophers()
                 .mapToInt(Philosopher::getMealCount).min().orElse(0) + TableMaster.MAX_DEVIATION;
     }
 
