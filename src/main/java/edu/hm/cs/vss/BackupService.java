@@ -52,11 +52,6 @@ public interface BackupService extends Serializable {
             public Stream<Philosopher> getPhilosophers() {
                 return philosopherList.stream();
             }
-
-            @Override
-            public RestoreService getRestoreService() {
-                return null;
-            }
         };
     }
 
@@ -101,5 +96,8 @@ public interface BackupService extends Serializable {
                 .ifPresent(Philosopher::incrementMealCount);
     }
 
-    RestoreService getRestoreService();
+    default void restoreTo(final Table table) {
+        getChairs().forEach(table::addChair);
+        getPhilosophers().forEach(table::addPhilosopher);
+    }
 }
