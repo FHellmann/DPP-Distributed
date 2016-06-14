@@ -3,7 +3,6 @@ package edu.hm.cs.vss.local;
 import edu.hm.cs.vss.*;
 import edu.hm.cs.vss.log.DummyLogger;
 import edu.hm.cs.vss.log.Logger;
-import edu.hm.cs.vss.remote.RemoteChair;
 import edu.hm.cs.vss.remote.RemoteTable;
 import edu.hm.cs.vss.remote.RmiTable;
 
@@ -78,7 +77,7 @@ public class LocalTablePool implements Table {
 
                 // Removes backed up table on reconnection
                 for (Iterator<Table> iter = backedUpTables.listIterator(); iter.hasNext(); ) {
-                    RemoteTable t = (RemoteTable)iter.next();
+                    RemoteTable t = (RemoteTable) iter.next();
                     if (t.getHost().equals(tableHost)) {
                         iter.remove();
                     }
@@ -161,11 +160,7 @@ public class LocalTablePool implements Table {
 
     @Override
     public void addChair(Chair chair) {
-        if(chair instanceof RemoteChair){
-            getLocalTable().addChair(new Chair.Builder().setName(chair.toString()).create());
-        } else {
-            getLocalTable().addChair(chair);
-        }
+        getLocalTable().addChair(chair);
 
         // Inform other tables
         getTables().parallel()
@@ -413,8 +408,7 @@ public class LocalTablePool implements Table {
                 tables.remove(table); // Remove the disconnected table
 
                 logger.log("Try to restore unreachable table " + table.getName() + "...");
-                tableBackupService.getChairs().forEach(LocalTablePool.this::addChair);
-                tableBackupService.getPhilosophers().forEach(LocalTablePool.this::addPhilosopher);
+                tableBackupService.restoreTo(LocalTablePool.this);
                 logger.log("Restored unreachable table " + table.getName() + "!");
 
                 backedUpTables.add(table);
