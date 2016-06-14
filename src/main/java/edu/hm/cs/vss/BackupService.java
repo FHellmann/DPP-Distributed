@@ -97,7 +97,7 @@ public interface BackupService extends Serializable {
     }
 
     default void restoreTo(final Table table) {
-        getChairs().forEach(table::addChair);
+        getChairs().map(chair -> new Chair.Builder().setName(chair.toString()).create()).forEach(table::addChair);
         getPhilosophers().forEach(table::addPhilosopher);
     }
 }
