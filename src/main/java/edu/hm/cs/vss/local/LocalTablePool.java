@@ -393,6 +393,7 @@ public class LocalTablePool implements Table {
                 tableBackupService.getPhilosophers().map(Philosopher::getName).map(name -> "\t- " + name).forEach(logger::log);
 
                 tables.remove(table); // Remove the disconnected table
+                ((RemoteTable) table).destroy();
 
                 logger.log("Try to restore unreachable table " + table.getName() + "...");
                 tableBackupService.restoreTo(LocalTablePool.this);

@@ -21,6 +21,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
     private final RmiTable table;
     private final BackupService backupService;
     private final AtomicBoolean backupLock = new AtomicBoolean(false);
+    private final Thread thread;
 
     public RemoteTable(final String host, Logger logger) throws Exception {
         this.host = host;
@@ -29,9 +30,9 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
         final Registry registry = LocateRegistry.getRegistry(host, NETWORK_PORT);
         table = (RmiTable) registry.lookup(Table.class.getSimpleName());
 
-        new Thread() {
+        thread = new Thread() {
             public void run() {
-                while (true) {
+                while (!isInterrupted()) {
                     try {
                         if (!backupLock.get()) {
                             try {
@@ -47,7 +48,8 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
                     }
                 }
             }
-        }.start();
+        };
+        thread.start();
     }
 
     @Override
@@ -161,8 +163,6 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
     }
 
     public void handleRemoteTableDisconnected(final RemoteException e) {
-        //logger.log(e.getMessage());
-        // e.printStackTrace();
         setChanged();
         notifyObservers(RemoteTable.this);
     }
@@ -171,8 +171,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
         try {
             return InetAddress.getLocalHost().getHostAddress();
         } catch (UnknownHostException e) {
-            e.printStackTrace();
-            return "127.0.0.1"; // TODO This is a potential bug if the host can not be detected automaticly
+            throw new RuntimeException("No ip address found for the local machine", e);
         }
     }
 
@@ -190,5 +189,9 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
 
     public String getHost() {
         return host;
+    }
+
+    public void destroy() {
+        thread.interrupt();
     }
 }
