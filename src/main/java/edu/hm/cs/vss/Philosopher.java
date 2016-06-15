@@ -107,14 +107,14 @@ public class Philosopher extends Thread {
     /**
      * Refuse the philosopher a seat at the table.
      */
-    public void banned() {
+    private void banned() {
         bannedTime = DEFAULT_TIME_TO_BANN;
     }
 
     /**
      * Allow the philosopher to sit down at the table.
      */
-    public void unbanned() {
+    private void unbanned() {
         bannedTime = -1;
     }
 
@@ -123,7 +123,7 @@ public class Philosopher extends Thread {
      *
      * @return the time.
      */
-    public Optional<Long> getBannedTime() {
+    private Optional<Long> getBannedTime() {
         if (bannedTime >= 0) {
             return Optional.ofNullable(bannedTime);
         }
@@ -161,7 +161,7 @@ public class Philosopher extends Thread {
         return veryHungry;
     }
 
-    public Stream<Fork> getForks() {
+    private Stream<Fork> getForks() {
         return forks.stream();
     }
 
@@ -173,7 +173,7 @@ public class Philosopher extends Thread {
         onStandUpListeners.remove(listener);
     }
 
-    public Stream<OnStandUpListener> getOnStandUpListener() {
+    private Stream<OnStandUpListener> getOnStandUpListener() {
         return onStandUpListeners.stream();
     }
 
@@ -208,7 +208,7 @@ public class Philosopher extends Thread {
             say("Waiting for seat");
 
             // waiting for a seat... if one is available it is directly blocked (removed from table)
-            if (getTable().getTables().map(Table::getTableMaster).allMatch(tableMaster -> tableMaster.isAllowedToTakeSeat(getMealCount()))) {
+            if (getTable().getTableMaster().isAllowedToTakeSeat(getMealCount())) {
                 unbanned();
 
                 // searching for the chair with a minimal queue size
@@ -220,7 +220,6 @@ public class Philosopher extends Thread {
                     try {
                         chairOptional = chairOptional.get().blockIfAvailable();
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
                         throw new RuntimeException(e);
                     }
                 }
@@ -251,10 +250,10 @@ public class Philosopher extends Thread {
         releaseForks();
         say("Stand up from seat (" + chair.toString() + ")");
         chair.unblock();
-        getOnStandUpListener().forEach(listener -> listener.onStandUp(this));
+        onStandUpListeners.stream().forEach(listener -> listener.onStandUp(this));
     }
 
-    protected Stream<Fork> waitForForks(final Chair chair) {
+    private Stream<Fork> waitForForks(final Chair chair) {
         say("Waiting for 2 forks...");
 
         List<Fork> foundForks = new ArrayList<>();
@@ -268,6 +267,11 @@ public class Philosopher extends Thread {
 
             // Try to get the right fork
             while (foundForks.size() < 1) {
+                if (isInterrupted()) {
+                    // Leave this never ending loop if the thread get's interrupted
+                    throw new RuntimeException();
+                }
+
                 fork.blockIfAvailable().ifPresent(foundForks::add);
 
                 if (foundForks.size() < 1 && deadlockDetectionCount++ > MAX_DEADLOCK_COUNT) {
@@ -286,6 +290,11 @@ public class Philosopher extends Thread {
 
             // Try to get the left fork
             while (foundForks.size() < 2) {
+                if (isInterrupted()) {
+                    // Leave this never ending loop if the thread get's interrupted
+                    throw new RuntimeException();
+                }
+
                 neighbourFork.blockIfAvailable().ifPresent(foundForks::add);
 
                 if (foundForks.size() < 2 && deadlockDetectionCount++ > MAX_DEADLOCK_COUNT) {
@@ -304,11 +313,11 @@ public class Philosopher extends Thread {
     /**
      * Unblock all forks and reset the forks the philosopher holds.
      */
-    protected void releaseForks() {
-        final String forks = getForks().map(Object::toString).collect(Collectors.joining(", "));
-        say("Release my forks" + ((forks.length() > 0) ? " (" + forks + ")" : " (no forks picked yet)"));
-        getForks().forEach(Fork::unblock);
-        this.forks.clear();
+    private void releaseForks() {
+        final String forksText = forks.stream().map(Object::toString).collect(Collectors.joining(", "));
+        say("Release my forks" + ((forksText.length() > 0) ? " (" + forksText + ")" : " (no forks picked yet)"));
+        forks.forEach(Fork::unblock);
+        forks.clear();
     }
 
     /**

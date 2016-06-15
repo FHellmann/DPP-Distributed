@@ -9,6 +9,7 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.Observable;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 /**
@@ -19,6 +20,7 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
     private final Logger logger;
     private final RmiTable table;
     private final BackupService backupService;
+    private final AtomicBoolean backupLock = new AtomicBoolean(false);
 
     public RemoteTable(final String host, Logger logger) throws Exception {
         this.host = host;
@@ -26,6 +28,26 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
         this.backupService = BackupService.create(this);
         final Registry registry = LocateRegistry.getRegistry(host, NETWORK_PORT);
         table = (RmiTable) registry.lookup(Table.class.getSimpleName());
+
+        new Thread() {
+            public void run() {
+                while (true) {
+                    try {
+                        if (!backupLock.get()) {
+                            try {
+                                table.backupFinished();
+                            } catch (RemoteException e) {
+                                handleRemoteTableDisconnected(e);
+                                throw new Exception(e);
+                            }
+                        }
+                        Thread.sleep(1000);
+                    } catch (Exception e) {
+                        // ignore exception
+                    }
+                }
+            }
+        }.start();
     }
 
     @Override
@@ -156,6 +178,14 @@ public class RemoteTable extends Observable implements Table, Philosopher.OnStan
 
     public boolean backupFinished() throws RemoteException {
         return table.backupFinished();
+    }
+
+    public void enableBackupLock() {
+        this.backupLock.set(true);
+    }
+
+    public void disableBackupLock() {
+        this.backupLock.set(false);
     }
 
     public String getHost() {

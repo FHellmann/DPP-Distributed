@@ -12,7 +12,9 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -42,28 +44,6 @@ public class LocalTablePool implements Table {
         registry.rebind(Table.class.getSimpleName(), UnicastRemoteObject.exportObject(new DistributedTableRmi(), NETWORK_PORT));
 
         tables.add(localTable);
-
-        (new Thread() {
-            public void run() {
-                while (true) {
-                    try {
-                        if (!backupLock.get()) {
-                            tables.stream().skip(1).map(table -> (RemoteTable) table).forEach(table -> {
-                                try {
-                                    table.backupFinished();
-                                } catch (RemoteException e) {
-                                    table.handleRemoteTableDisconnected(e);
-                                    throw new RuntimeException(e);
-                                }
-                            });
-                        }
-                        Thread.sleep(1000);
-                    } catch (Exception e) {
-                        // ignore exception
-                    }
-                }
-            }
-        }).start();
     }
 
     @Override
@@ -351,6 +331,8 @@ public class LocalTablePool implements Table {
                 return;
             }
 
+            getTables().skip(1).map(remoteTable -> (RemoteTable) remoteTable).forEach(RemoteTable::enableBackupLock);
+
             synchronized (tables) {
                 final Table table = (Table) object; // This table as been disconnected!
                 logger.log("Unreachable table " + table.getName() + " detected...");
@@ -361,7 +343,13 @@ public class LocalTablePool implements Table {
                 }
 
                 logger.log("suspending all local philosophers");
-                getPhilosophers().forEach(Philosopher::putToSleep);
+                final List<Philosopher> philosophers = table.getPhilosophers().collect(Collectors.toList());
+                table.getPhilosophers().peek(localPhilosophers::remove).forEach(Thread::interrupt);
+                try {
+                    Thread.currentThread().join(TimeUnit.MILLISECONDS.convert(10, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
 
                 // There are enough tables to even consider that we are not responsible
                 if (tables.size() > 2 && !tables.get(1).getName().equals(table.getName())) {
@@ -412,7 +400,12 @@ public class LocalTablePool implements Table {
 
                 backedUpTables.add(table);
 
-                getPhilosophers().forEach(Philosopher::wakeUp);
+                philosophers.parallelStream().map(philosopher -> new Philosopher.Builder()
+                        .name(philosopher.getName())
+                        .setTakenMeals(philosopher.getMealCount())
+                        .create()).forEach(localPhilosophers::add);
+
+                getTables().skip(1).map(remoteTable -> (RemoteTable) remoteTable).forEach(RemoteTable::disableBackupLock);
                 backupLock.set(false);
             }
         }
