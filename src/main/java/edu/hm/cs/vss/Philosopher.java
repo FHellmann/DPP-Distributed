@@ -177,34 +177,11 @@ public class Philosopher extends Thread {
         return onStandUpListeners.stream();
     }
 
-    public void putToSleep() {
-        threadSuspended.set(true);
-        say("Going to sleep now");
-    }
-
-    public void wakeUp() {
-        threadSuspended.set(false);
-        say("Waking up");
-    }
-
     private Chair waitForSitDown() {
         Optional<Chair> chairOptional = Optional.empty();
         say("Waiting for a nice seat...");
 
         do {
-            //synchronized (wakeSync) {
-            while (threadSuspended.get()) {
-                // TODO: something better than this
-                try {
-                    //wait();
-                    say("Sleeping for 100 ms");
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-            //}
-
             say("Waiting for seat");
 
             // waiting for a seat... if one is available it is directly blocked (removed from table)

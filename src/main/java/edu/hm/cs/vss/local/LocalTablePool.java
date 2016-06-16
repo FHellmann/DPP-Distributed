@@ -360,7 +360,6 @@ public class LocalTablePool implements Table {
 
                     (new Thread() {
                         public void run() {
-                            // TODO: Set lock in restoringTable
                             try {
                                 Thread.sleep(10000);
                             } catch (InterruptedException e) {
@@ -377,8 +376,11 @@ public class LocalTablePool implements Table {
                             } catch (RemoteException e) {
                                 restoringTableTemp.handleRemoteTableDisconnected(e);
                             }
-                            backupLock.set(false);
-                            getPhilosophers().forEach(Philosopher::wakeUp);
+                            philosophers.parallelStream().map(philosopher -> new Philosopher.Builder()
+                                    .name(philosopher.getName())
+                                    .setTakenMeals(philosopher.getMealCount())
+                                    .create()).forEach(localPhilosophers::add);
+                            getTables().skip(1).map(remoteTable -> (RemoteTable) remoteTable).forEach(RemoteTable::disableBackupLock);
                         }
                     }).start();
                     return;
