@@ -343,13 +343,16 @@ public class LocalTablePool implements Table {
                 }
 
                 logger.log("suspending all local philosophers");
-                final List<Philosopher> philosophers = table.getPhilosophers().collect(Collectors.toList());
-                table.getPhilosophers().peek(localPhilosophers::remove).forEach(Thread::interrupt);
-                try {
-                    Thread.currentThread().join(TimeUnit.MILLISECONDS.convert(10, TimeUnit.SECONDS));
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+                final List<Philosopher> philosophers = getPhilosophers().collect(Collectors.toList());
+                getPhilosophers().forEach(Thread::interrupt);
+                localPhilosophers.clear();
+                philosophers.forEach(p -> {
+                    try {
+                        p.join(TimeUnit.MILLISECONDS.convert(30, TimeUnit.SECONDS));
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                });
 
                 // There are enough tables to even consider that we are not responsible
                 if (tables.size() > 2 && !tables.get(1).getName().equals(table.getName())) {
@@ -376,10 +379,15 @@ public class LocalTablePool implements Table {
                             } catch (RemoteException e) {
                                 restoringTableTemp.handleRemoteTableDisconnected(e);
                             }
+
                             philosophers.parallelStream().map(philosopher -> new Philosopher.Builder()
                                     .name(philosopher.getName())
+                                    .setTable(philosopher.getTable())
+                                    .setHungry(philosopher.isHungry())
                                     .setTakenMeals(philosopher.getMealCount())
-                                    .create()).forEach(localPhilosophers::add);
+                                    .setLogger(philosopher.getLogger())
+                                    .create()).forEach(LocalTablePool.this::addPhilosopher);
+
                             getTables().skip(1).map(remoteTable -> (RemoteTable) remoteTable).forEach(RemoteTable::disableBackupLock);
                         }
                     }).start();
@@ -389,15 +397,15 @@ public class LocalTablePool implements Table {
 
                 final BackupService tableBackupService = table.getBackupService();
 
-                logger.log("Chair(s):");
-                tableBackupService.getChairs().forEach(tmp -> logger.log("\t- " + tmp.toString()));
-                logger.log("Philosopher(s):");
-                tableBackupService.getPhilosophers().map(Philosopher::getName).map(name -> "\t- " + name).forEach(logger::log);
 
                 tables.remove(table); // Remove the disconnected table
                 ((RemoteTable) table).destroy();
 
                 logger.log("Try to restore unreachable table " + table.getName() + "...");
+                logger.log("Chair(s):");
+                tableBackupService.getChairs().forEach(tmp -> logger.log("\t- " + tmp.toString()));
+                logger.log("Philosopher(s):");
+                tableBackupService.getPhilosophers().map(Philosopher::getName).map(name -> "\t- " + name).forEach(logger::log);
                 tableBackupService.restoreTo(LocalTablePool.this);
                 logger.log("Restored unreachable table " + table.getName() + "!");
 
@@ -405,8 +413,11 @@ public class LocalTablePool implements Table {
 
                 philosophers.parallelStream().map(philosopher -> new Philosopher.Builder()
                         .name(philosopher.getName())
+                        .setTable(philosopher.getTable())
+                        .setHungry(philosopher.isHungry())
                         .setTakenMeals(philosopher.getMealCount())
-                        .create()).forEach(localPhilosophers::add);
+                        .setLogger(philosopher.getLogger())
+                        .create()).forEach(LocalTablePool.this::addPhilosopher);
 
                 getTables().skip(1).map(remoteTable -> (RemoteTable) remoteTable).forEach(RemoteTable::disableBackupLock);
                 backupLock.set(false);
